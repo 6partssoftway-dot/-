@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>洗濯機 修理作業報告書・同意書</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a4a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="修理同意書">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --blue: #1a4a8a; --blue-light: #e8f0fb; --blue-mid: #3a6bbf;
+    --gray: #4a5568; --gray-light: #f7f8fa; --border: #d1d9e6;
+    --red: #c0392b; --green: #1a7a4a; --white: #ffffff; --text: #1a202c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; background:#eef2f7; color:var(--text); font-size:14px; line-height:1.6; padding:16px; }
+  .page { max-width:800px; margin:0 auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
+  .page-header { background:var(--blue); color:white; text-align:center; padding:14px 20px; }
+  .page-header h1 { font-size:17px; font-weight:700; letter-spacing:.05em; }
+  .page-header p { font-size:11px; opacity:.85; margin-top:3px; }
+  .section { padding:16px 20px; border-bottom:1px solid var(--border); }
+  .section:last-child { border-bottom:none; }
+  .section-title { font-size:12px; font-weight:700; color:var(--blue); background:var(--blue-light); border-left:4px solid var(--blue); padding:5px 10px; margin-bottom:12px; letter-spacing:.05em; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .span-2 { grid-column:span 2; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-size:11px; font-weight:600; color:var(--gray); }
+  .field label .req { color:var(--red); margin-left:2px; }
+  .field input,.field select,.field textarea { border:1px solid var(--border); border-radius:3px; padding:8px 10px; font-size:14px; font-family:inherit; background:var(--white); transition:border-color .15s; width:100%; }
+  .field input:focus,.field select:focus,.field textarea:focus { outline:none; border-color:var(--blue-mid); background:var(--blue-light); }
+  .field textarea { resize:vertical; min-height:60px; }
+  .radio-row { display:flex; flex-wrap:wrap; gap:14px; margin-top:4px; }
+  .radio-row label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer; }
+  .radio-row input[type="radio"] { accent-color:var(--blue); }
+  .error-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .error-chip { display:flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:20px; padding:4px 12px; font-size:12px; cursor:pointer; transition:all .15s; user-select:none; }
+  .error-chip input { display:none; }
+  .error-chip:has(input:checked) { background:var(--blue); border-color:var(--blue); color:white; }
+  /* work table */
+  .work-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .work-table thead tr { background:var(--blue); color:white; }
+  .work-table thead th { padding:7px 10px; text-align:left; font-weight:600; font-size:12px; }
+  .work-table thead th:last-child { text-align:right; }
+  .work-table tbody tr { border-bottom:1px solid var(--border); }
+  .work-table tbody tr.selected { background:#e8f5ee; }
+  .work-table tbody tr.discount-row.selected { background:#fff0f0; }
+  .work-table td { padding:7px 10px; vertical-align:middle; }
+  .work-table td:last-child { text-align:right; font-weight:600; white-space:nowrap; }
+  .work-table .check-cell { width:32px; text-align:center; }
+  .work-table input[type="checkbox"] { accent-color:var(--blue); width:16px; height:16px; cursor:pointer; }
+  .notes-input { border:1px solid var(--border); border-radius:3px; padding:4px 6px; font-size:12px; width:100%; max-width:200px; }
+  .price-input { border:1px solid var(--border); border-radius:3px; padding:4px 6px; font-size:12px; width:80px; text-align:right; }
+  .total-area { display:flex; justify-content:flex-end; gap:24px; align-items:center; padding:12px 16px; background:var(--blue-light); border-top:2px solid var(--blue); margin-top:8px; }
+  .total-area .total { font-size:18px; font-weight:700; color:var(--blue); }
+  /* consent */
+  .consent-box { background:#fffbf0; border:1px solid #e6c87a; border-radius:4px; padding:14px 16px; margin-bottom:12px; }
+  .consent-box > p { font-size:12px; color:#5a4a1a; margin-bottom:8px; }
+  .consent-item { display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-top:1px solid #e6d8a0; cursor:pointer; }
+  .consent-item input[type="checkbox"] { width:18px; height:18px; margin-top:2px; accent-color:var(--green); flex-shrink:0; cursor:pointer; }
+  .consent-item span { font-size:12px; line-height:1.65; }
+  /* email */
+  .email-row { display:flex; gap:6px; align-items:center; }
+  .email-row input { flex:1.3; min-width:0; }
+  .email-row .email-at { font-weight:700; color:var(--gray); flex-shrink:0; }
+  .email-row select { flex:1; min-width:0; }
+  .no-email-check { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--gray); margin-top:8px; cursor:pointer; }
+  .no-email-check input { width:15px; height:15px; accent-color:var(--blue); cursor:pointer; }
+  /* signature */
+  .signature-wrap { border:2px dashed var(--border); border-radius:4px; background:#fafafa; }
+  #signatureCanvas { display:block; width:100%; height:150px; cursor:crosshair; touch-action:none; }
+  .sig-actions { display:flex; gap:8px; margin-top:6px; align-items:center; }
+  .btn-clear { background:none; border:1px solid var(--border); border-radius:3px; padding:5px 12px; font-size:12px; cursor:pointer; color:var(--gray); }
+  .sig-hint { font-size:11px; color:#aaa; margin-top:4px; }
+  /* submit */
+  .submit-area { padding:20px; background:var(--gray-light); text-align:center; }
+  .btn-submit { background:var(--blue); color:white; border:none; border-radius:4px; padding:14px 48px; font-size:16px; font-weight:700; cursor:pointer; transition:background .15s; letter-spacing:.05em; width:100%; max-width:360px; }
+  .btn-submit:hover { background:var(--blue-mid); }
+  .btn-submit:disabled { background:#aaa; cursor:not-allowed; }
+  .error-msg { color:var(--red); font-size:12px; margin-top:8px; }
+  #successScreen { display:none; padding:40px 20px; text-align:center; }
+  #successScreen .check-icon { font-size:56px; margin-bottom:16px; }
+  #successScreen h2 { font-size:20px; color:var(--green); margin-bottom:8px; }
+  #successScreen p { font-size:13px; color:var(--gray); line-height:1.7; }
+  .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
+  .btn-download:hover { opacity:.9; }
+  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <h1>洗濯機 修理作業報告書・同意書</h1>
+    <p>洗濯機修理センター ／ 作業完了後、お客様にご確認・ご署名いただいてください</p>
+  </div>
+  <form id="repairForm">
+
+    <!-- 担当者・機器情報 -->
+    <div class="section">
+      <div class="section-title">【担当者・機器情報】</div>
+      <div class="grid-2">
+        <div class="field">
+          <label>訪問日</label>
+          <input type="date" id="visitDate">
+        </div>
+        <div class="field">
+          <label>担当者名</label>
+          <input type="text" id="staffName" placeholder="担当者">
+        </div>
+        <div class="field">
+          <label>メーカー・機種名</label>
+          <input type="text" id="maker" placeholder="例：Panasonic NA-VX9900L">
+        </div>
+        <div class="field">
+          <label>種類</label>
+          <div class="radio-row" style="margin-top:6px">
+            <label><input type="radio" name="washType" value="縦型"> 縦型</label>
+            <label><input type="radio" name="washType" value="ドラム式"> ドラム式</label>
+          </div>
+        </div>
+        <div class="field span-2">
+          <label>症状・依頼内容</label>
+          <textarea id="symptom" placeholder="例：排水できない、エラーが出て止まる"></textarea>
+        </div>
+        <div class="field span-2">
+          <label>エラーコード</label>
+          <div class="error-grid">
+            <label class="error-chip"><input type="checkbox" name="error" value="H35"> H35</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="U11"> U11</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="C02"> C02</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="C01"> C01</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="E03"> E03</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="U14"> U14</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="C1"> C1</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="C08"> C08</label>
+            <label class="error-chip"><input type="checkbox" name="error" value="ドアロックSW"> ドアロックSW</label>
+          </div>
+          <input type="text" id="errorOther" placeholder="その他エラー（自由入力）" style="border:1px solid var(--border);border-radius:3px;padding:6px 10px;font-size:13px;width:100%;margin-top:6px">
+        </div>
+        <div class="field">
+          <label>受注元</label>
+          <select id="orderSource">
+            <option value="">選択してください</option>
+            <option>S（自社）</option><option>P（プリベント）</option>
+            <option>K（暮らしのサポート）</option><option>M（霧島MED）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>問合せ方法</label>
+          <select id="contactMethod">
+            <option value="">選択してください</option>
+            <option>TEL</option><option>LINE</option>
+            <option>アイブリー</option><option>ネット</option><option>その他</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作業内容・料金 -->
+    <div class="section">
+      <div class="section-title">【作業内容・料金一覧】</div>
+      <table class="work-table">
+        <thead>
+          <tr>
+            <th class="check-cell">実施</th>
+            <th>作業内容</th>
+            <th>備考</th>
+            <th>税抜金額</th>
+          </tr>
+        </thead>
+        <tbody id="workTableBody"></tbody>
+      </table>
+      <div class="total-area" style="flex-direction:column;align-items:flex-end;gap:6px">
+        <span style="font-size:13px;color:var(--gray)">小計（税抜）: <strong id="subtotalDisp">¥0</strong></span>
+        <span style="font-size:13px;color:var(--gray)">消費税（10%）: <strong id="taxDisp">¥0</strong></span>
+        <span class="total">合計（税込）: <strong id="totalDisp">¥0</strong></span>
+      </div>
+      <div style="margin-top:12px" class="field">
+        <label>お支払い方法</label>
+        <div class="radio-row">
+          <label><input type="radio" name="payment" value="現金"> 現金</label>
+          <label><input type="radio" name="payment" value="振込"> 振込</label>
+          <label><input type="radio" name="payment" value="カード"> カード</label>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="field">
+          <label>入金状況</label>
+          <select id="paymentStatus">
+            <option value="入金待ち">入金待ち</option>
+            <option value="入金済み">入金済み</option>
+            <option value="未設定">未設定</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>入金予定月</label>
+          <select id="paymentMonth">
+            <option value="">選択</option>
+            <option>1月</option><option>2月</option><option>3月</option>
+            <option>4月</option><option>5月</option><option>6月</option>
+            <option>7月</option><option>8月</option><option>9月</option>
+            <option>10月</option><option>11月</option><option>12月</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 同意事項 -->
+    <div class="section">
+      <div class="section-title">【同意事項】</div>
+      <div class="consent-box">
+        <p>以下の4項目をお読みの上、それぞれチェックをお願いします。</p>
+        <label class="consent-item">
+          <input type="checkbox" id="consent1" required>
+          <span>◆ 修理作業は、洗濯機の使用状況・年式・症状に応じた応急的または部分的な対応であり、<strong>恒久的な修復や動作保証を目的とするものではない</strong>ことを了承しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent2" required>
+          <span>◆ 使用年数の経過・部品の劣化・構造上の問題に起因して、作業後に再発や別の不具合が生じる可能性があり、<strong>これらに関する損害等について当社は責任を負いかねる</strong>ことを理解しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent3" required>
+          <span>◆ 本サービスはお客様の明確なご依頼に基づく訪問・作業であり、<strong>特定商取引法の訪問販売には該当せず、クーリング・オフ制度の適用対象外</strong>であることを確認しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent4" required>
+          <span>◆ 修理によって症状が改善されても、使用環境・機種特性によって持続性に差が生じる可能性があり、<strong>新品同様の性能回復を保証するものではない</strong>ことを理解しました。</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- お客様情報＋署名（まとめて最下部） -->
+    <div class="section">
+      <div class="section-title">【お客様情報・署名】</div>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div class="field">
+          <label>お名前 <span class="req">*</span></label>
+          <input type="text" id="name" required placeholder="山田 太郎">
+        </div>
+        <div class="field">
+          <label>地域</label>
+          <input type="text" id="area" placeholder="例：渋谷区">
+        </div>
+        <div class="field span-2">
+          <label>住所</label>
+          <input type="text" id="address" placeholder="東京都渋谷区...">
+        </div>
+        <div class="field">
+          <label>お電話番号 <span class="req">*</span></label>
+          <input type="tel" id="phone" required placeholder="090-0000-0000">
+        </div>
+        <div class="field span-2" id="emailFieldWrap">
+          <label>メールアドレス（控えの送付先）</label>
+          <div class="email-row">
+            <input type="text" id="emailLocal" placeholder="yamada.taro" autocomplete="off" inputmode="email">
+            <span class="email-at">@</span>
+            <select id="emailDomain">
+              <option value="">ドメインを選択</option>
+              <option value="gmail.com">gmail.com</option>
+              <option value="yahoo.co.jp">yahoo.co.jp</option>
+              <option value="icloud.com">icloud.com</option>
+              <option value="outlook.jp">outlook.jp</option>
+              <option value="hotmail.co.jp">hotmail.co.jp</option>
+              <option value="docomo.ne.jp">docomo.ne.jp</option>
+              <option value="ezweb.ne.jp">ezweb.ne.jp（au）</option>
+              <option value="softbank.ne.jp">softbank.ne.jp</option>
+              <option value="__other__">その他（自由入力）</option>
+            </select>
+          </div>
+          <input type="text" id="emailDomainCustom" placeholder="ドメインを入力（例：example.co.jp）" style="display:none;margin-top:6px">
+          <label class="no-email-check">
+            <input type="checkbox" id="noEmail">
+            メールアドレスをお持ちでない（メール送信不要・PDFのみでお渡し）
+          </label>
+        </div>
+        <div class="field">
+          <label>登録月</label>
+          <select id="regMonth">
+            <option value="">選択</option>
+            <option>1月</option><option>2月</option><option>3月</option>
+            <option>4月</option><option>5月</option><option>6月</option>
+            <option>7月</option><option>8月</option><option>9月</option>
+            <option>10月</option><option>11月</option><option>12月</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:8px">枠内に指またはペンで署名してください</p>
+      <div class="signature-wrap">
+        <canvas id="signatureCanvas"></canvas>
+      </div>
+      <div class="sig-actions">
+        <button type="button" class="btn-clear" onclick="clearSignature()">✕ 書き直す</button>
+        <span id="sigStatus" style="font-size:12px;color:#1a7a4a"></span>
+      </div>
+      <p class="sig-hint">※ 署名は同意の意思表示として記録されます（送信日時・端末情報を含む）</p>
+    </div>
+
+    <div class="submit-area">
+      <p id="formError" class="error-msg" style="margin-bottom:8px"></p>
+      <button type="submit" class="btn-submit" id="submitBtn">同意して送信する</button>
+      <p style="font-size:11px;color:#aaa;margin-top:10px">送信後、領収書兼控えをお渡しします（メール登録がある場合はメールでも送付されます）</p>
+    </div>
+  </form>
+
+  <div id="successScreen">
+    <div class="check-icon">✅</div>
+    <h2>送信が完了しました</h2>
+    <p id="successMsg">ご利用ありがとうございました。</p>
+    <button type="button" class="btn-download" id="downloadPdfBtn" onclick="downloadReceiptPdf()" style="display:none">📄 領収書PDFをダウンロード</button>
+  </div>
+</div>
+
+<!-- 領収書PDF用の非表示テンプレート（画面には出さず、html2canvasでの画像化専用） -->
+<div id="receiptTemplate" style="position:absolute;left:-9999px;top:0;width:600px;background:#fff;padding:28px;font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a202c;">
+  <div style="text-align:center;border-bottom:3px solid #1a4a8a;padding-bottom:12px;margin-bottom:16px;">
+    <div style="font-size:20px;font-weight:700;color:#1a4a8a;">領収書 兼 作業報告書控え</div>
+    <div style="font-size:12px;color:#4a5568;margin-top:4px;">洗濯機修理センター</div>
+  </div>
+  <div id="rtMeta" style="font-size:12px;line-height:1.9;margin-bottom:14px;"></div>
+  <table id="rtTable" style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;"></table>
+  <div id="rtTotals" style="text-align:right;font-size:13px;line-height:1.8;margin-bottom:16px;"></div>
+  <div id="rtSig" style="font-size:11px;color:#4a5568;"></div>
+  <div id="rtIssued" style="text-align:right;font-size:10px;color:#aaa;margin-top:16px;"></div>
+</div>
+
+<script>
+emailjs.init("l2eKNzwamFlkn0T8m");
+
+const EMAILJS_SERVICE  = "service_3zxvy3p";
+const EMAILJS_TEMPLATE = "template_6k7losz";
+
+// ===== WORK ITEMS（税抜価格）=====
+const ITEMS = [
+  { id:'cleaning',       label:'クリーニング（洗濯槽・排水系）',        note:'分解洗浄含む',     price:42000 },
+  { id:'clog_internal',  label:'内部つまり除去（フィルター・配管等）',   note:'',                 price:32000 },
+  { id:'drain_normal',   label:'排水つまり除去(縦型)',                   note:'',                 price:18000 },
+  { id:'drain_drum',     label:'排水つまり除去(ドラム式)',               note:'排水口まで',       price:22000 },
+  { id:'drum_remove',    label:'ドラム脱着作業（排水口アクセス用）',     note:'ドラムを外して対応', price:10000 },
+  { id:'doorlock',       label:'ドアロックスイッチ対応',                 note:'',                 price:29800 },
+  { id:'drain_leak',     label:'排水不良／水漏れ修理',                   note:'',                 price:7700 },
+  { id:'parts',          label:'部品交換',                               note:'部品名を入力',     price:null },
+  { id:'belt',           label:'ベルト交換',                             note:'',                 price:29800 },
+  { id:'motor',          label:'モーター交換',                           note:'',                 price:19800 },
+  { id:'water_valve',    label:'給水弁交換',                             note:'',                 price:32000 },
+  { id:'packing',        label:'パッキン交換',                           note:'',                 price:39800 },
+  { id:'transport',      label:'洗濯機運搬設置一式',                     note:'',                 price:19800 },
+  { id:'reattach',       label:'取り外し・再取付',                       note:'基本作業',         price:1980 },
+  { id:'raise_normal',   label:'かさ上げ設置（通常）',                   note:'高さ調整台設置',   price:5000 },
+  { id:'raise_drum',     label:'かさ上げ設置（ドラム式）',               note:'重量対応専用',     price:8000 },
+  { id:'faucet',         label:'洗濯水栓交換',                           note:'',                 price:15000 },
+  { id:'wall_faucet',    label:'壁ピタ水栓交換',                         note:'',                 price:28000 },
+  { id:'drain_hose',     label:'排水ホース交換',                         note:'長さ1m',           price:9800 },
+  { id:'supply_hose',    label:'給水ホース交換',                         note:'',                 price:7800 },
+  { id:'elbow',          label:'排水エルボ取付',                         note:'',                 price:3800 },
+  { id:'straight_drain', label:'真下排水アダプター対応',                 note:'',                 price:5000 },
+  { id:'busy',           label:'繁忙期対応加算（3・4月）',               note:'',                 price:3000 },
+  { id:'yearend',        label:'年末料金加算（12月）',                   note:'',                 price:5000 },
+  { id:'sameday',        label:'即日対応費',                             note:'',                 price:1000 },
+  { id:'travel',         label:'交通費',                                 note:'',                 price:3000 },
+  { id:'other',          label:'その他',                                 note:'内容を入力',       price:null },
+  { id:'discount',       label:'値引き',                                 note:'',                 price:null, discount:true },
+];
+
+function buildTable() {
+  const tbody = document.getElementById('workTableBody');
+  ITEMS.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = item.id;
+    if (item.discount) tr.classList.add('discount-row');
+    const priceCell = item.price !== null
+      ? `<span>${item.discount?'▲':''}${item.price.toLocaleString()}円</span>`
+      : `<input type="number" class="price-input custom-price" data-id="${item.id}" placeholder="0" min="0" oninput="calcTotal()">円`;
+    tr.innerHTML = `
+      <td class="check-cell"><input type="checkbox" class="item-check" data-id="${item.id}"
+        data-price="${item.price??0}" data-discount="${!!item.discount}"
+        onchange="calcTotal();this.closest('tr').classList.toggle('selected',this.checked)"></td>
+      <td>${item.label}</td>
+      <td><input type="text" class="notes-input" data-id="${item.id}" placeholder="${item.note}"></td>
+      <td>${priceCell}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function calcTotal() {
+  let subtotal = 0;
+  document.querySelectorAll('.item-check:checked').forEach(cb => {
+    const id = cb.dataset.id;
+    const isDiscount = cb.dataset.discount === 'true';
+    const custom = document.querySelector(`.custom-price[data-id="${id}"]`);
+    let price = custom ? parseInt(custom.value||0) : parseInt(cb.dataset.price);
+    if (isDiscount) price = -Math.abs(price);
+    subtotal += price;
+  });
+  const tax = Math.round(subtotal * 0.1);
+  const total = subtotal + tax;
+  document.getElementById('subtotalDisp').textContent = '¥' + subtotal.toLocaleString();
+  document.getElementById('taxDisp').textContent = '¥' + tax.toLocaleString();
+  document.getElementById('totalDisp').textContent = '¥' + total.toLocaleString();
+  return {subtotal, tax, total};
+}
+
+// ===== SIGNATURE =====
+const canvas = document.getElementById('signatureCanvas');
+const ctx = canvas.getContext('2d');
+let drawing = false, hasSig = false;
+function resizeCanvas() {
+  const ratio = window.devicePixelRatio||1;
+  const w = canvas.parentElement.getBoundingClientRect().width;
+  canvas.width = w*ratio; canvas.height = 150*ratio;
+  ctx.scale(ratio,ratio); ctx.strokeStyle='#1a202c'; ctx.lineWidth=2; ctx.lineCap='round'; ctx.lineJoin='round';
+}
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  if (e.touches) return {x:e.touches[0].clientX-r.left, y:e.touches[0].clientY-r.top};
+  return {x:e.clientX-r.left, y:e.clientY-r.top};
+}
+canvas.addEventListener('mousedown', e=>{drawing=true; const p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y);});
+canvas.addEventListener('mousemove', e=>{if(!drawing)return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasSig=true; document.getElementById('sigStatus').textContent='✓ 署名済み';});
+canvas.addEventListener('mouseup', ()=>drawing=false);
+canvas.addEventListener('mouseleave', ()=>drawing=false);
+canvas.addEventListener('touchstart', e=>{e.preventDefault(); drawing=true; const p=getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y);});
+canvas.addEventListener('touchmove', e=>{e.preventDefault(); if(!drawing)return; const p=getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); hasSig=true; document.getElementById('sigStatus').textContent='✓ 署名済み';});
+canvas.addEventListener('touchend', ()=>drawing=false);
+function clearSignature() {
+  const r=window.devicePixelRatio||1;
+  ctx.clearRect(0,0,canvas.width/r,canvas.height/r);
+  hasSig=false; document.getElementById('sigStatus').textContent='';
+}
+
+// ===== EMAIL（ドメイン選択・メールなし対応）=====
+const emailLocalEl = document.getElementById('emailLocal');
+const emailDomainEl = document.getElementById('emailDomain');
+const emailDomainCustomEl = document.getElementById('emailDomainCustom');
+const noEmailEl = document.getElementById('noEmail');
+const emailFieldWrapEl = document.getElementById('emailFieldWrap');
+
+emailDomainEl.addEventListener('change', () => {
+  emailDomainCustomEl.style.display = emailDomainEl.value === '__other__' ? 'block' : 'none';
+});
+
+noEmailEl.addEventListener('change', () => {
+  const disabled = noEmailEl.checked;
+  emailLocalEl.disabled = disabled;
+  emailDomainEl.disabled = disabled;
+  emailDomainCustomEl.disabled = disabled;
+  emailFieldWrapEl.style.opacity = disabled ? '0.45' : '1';
+});
+
+function getEmailValue() {
+  if (noEmailEl.checked) return '';
+  const local = emailLocalEl.value.trim();
+  let domain = emailDomainEl.value;
+  if (domain === '__other__') domain = emailDomainCustomEl.value.trim();
+  if (!local || !domain) return '';
+  return `${local}@${domain}`;
+}
+
+// ===== NET AMOUNT（手取り自動計算）=====
+// 現金・振込：手数料なし（売上そのまま）／カード：売上から決済手数料2.5%を控除
+function calcNetAmount(payment, total) {
+  if (payment === 'カード') return Math.round(total * (1 - 0.025));
+  return total;
+}
+
+// ===== COLLECT =====
+function collectData() {
+  const errors = [...document.querySelectorAll('input[name="error"]:checked')].map(e=>e.value);
+  const otherError = document.getElementById('errorOther').value.trim();
+  if (otherError) errors.push('その他:'+otherError);
+
+  const workItems = [];
+  let subtotal = 0;
+  document.querySelectorAll('.item-check:checked').forEach(cb => {
+    const id = cb.dataset.id;
+    const item = ITEMS.find(i=>i.id===id);
+    const note = document.querySelector(`.notes-input[data-id="${id}"]`)?.value||'';
+    const custom = document.querySelector(`.custom-price[data-id="${id}"]`);
+    const isDiscount = cb.dataset.discount==='true';
+    let price = custom ? parseInt(custom.value||0) : parseInt(cb.dataset.price);
+    if (isDiscount) price = -Math.abs(price);
+    subtotal += price;
+    workItems.push({name:item.label, note, price});
+  });
+  const tax = Math.round(subtotal * 0.1);
+  const total = subtotal + tax;
+
+  const name = document.getElementById('name').value.trim();
+  const visitDate = document.getElementById('visitDate').value;
+  const payment = document.querySelector('input[name="payment"]:checked')?.value||'';
+  return {
+    name, phone: document.getElementById('phone').value,
+    email: getEmailValue(),
+    address: document.getElementById('address').value,
+    area: document.getElementById('area').value,
+    visitDate, maker: document.getElementById('maker').value,
+    washType: document.querySelector('input[name="washType"]:checked')?.value||'',
+    symptom: document.getElementById('symptom').value,
+    errors: errors.join(', '), workItems, total,
+    payment,
+    paymentStatus: document.getElementById('paymentStatus').value,
+    paymentMonth: document.getElementById('paymentMonth').value,
+    regMonth: document.getElementById('regMonth').value,
+    orderSource: document.getElementById('orderSource').value,
+    contactMethod: document.getElementById('contactMethod').value,
+    staffName: document.getElementById('staffName').value,
+    caseName: `${name}様 ${visitDate} 洗濯機修理`,
+    subtotal, tax, total,
+    netAmount: calcNetAmount(payment, total),
+    timestamp: new Date().toLocaleString('ja-JP'),
+  };
+}
+
+// ===== NOTION（Make/Zapier不要・EmailJSのWebhook経由で送る）=====
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjdpG_7c9tAHVQWuR-yw3SI44L1N8qMFj4mz2HLUVDh-LiXuCV8GQSL-AIEzClInBG-Q/exec';
+
+async function sendToNotion(d) {
+  const repairContent = [d.symptom, d.errors?'エラー:'+d.errors:'', d.workItems.map(w=>`${w.name}${w.note?'('+w.note+')':''}: ¥${w.price.toLocaleString()}`).join('\n')].filter(Boolean).join('\n\n');
+
+  const payload = {
+    caseName:      d.caseName,
+    name:          d.name,
+    phone:         d.phone,
+    address:       d.address,
+    area:          d.area,
+    makerType:     [d.maker, d.washType].filter(Boolean).join(' '),
+    repairContent: repairContent,
+    total:         d.total,
+    netAmount:     d.netAmount,
+    paymentStatus: d.paymentStatus,
+    visitDate:     d.visitDate,
+    payment:       d.payment,
+    paymentMonth:  d.paymentMonth,
+    regMonth:      d.regMonth,
+    orderSource:   d.orderSource,
+    contactMethod: d.contactMethod,
+  };
+
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload),
+    redirect: 'follow',
+  });
+
+  // GASは正常でも様々なレスポンスを返すため、ステータスコードで判断
+  if (!res.ok && res.status !== 0) {
+    const result = await res.json().catch(() => ({}));
+    throw new Error(result.message || '送信エラー');
+  }
+  // 200か、またはリダイレクト後でもOKとみなす
+}
+
+// ===== 領収書PDF生成 =====
+let lastReceiptDoc = null, lastReceiptFilename = '';
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fillReceiptTemplate(d) {
+  document.getElementById('rtMeta').innerHTML = `
+    <div>訪問日：${escapeHtml(d.visitDate || '-')}　担当：${escapeHtml(d.staffName || '-')}</div>
+    <div>お客様名：${escapeHtml(d.name)} 様</div>
+    <div>住所：${escapeHtml(d.address || '-')}</div>
+    <div>電話番号：${escapeHtml(d.phone || '-')}</div>
+    <div>機種：${escapeHtml([d.maker, d.washType].filter(Boolean).join(' ') || '-')}</div>
+  `;
+  const rows = d.workItems.map(w => `
+    <tr style="border-bottom:1px solid #d1d9e6;">
+      <td style="padding:5px 4px;">${escapeHtml(w.name)}${w.note ? '（'+escapeHtml(w.note)+'）' : ''}</td>
+      <td style="padding:5px 4px;text-align:right;white-space:nowrap;">¥${w.price.toLocaleString()}</td>
+    </tr>`).join('');
+  document.getElementById('rtTable').innerHTML = `
+    <thead><tr style="background:#1a4a8a;color:#fff;"><th style="padding:6px 4px;text-align:left;">作業内容</th><th style="padding:6px 4px;text-align:right;">税抜金額</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+  document.getElementById('rtTotals').innerHTML = `
+    <div>小計（税抜）：¥${d.subtotal.toLocaleString()}</div>
+    <div>消費税（10%）：¥${d.tax.toLocaleString()}</div>
+    <div style="font-size:16px;font-weight:700;color:#1a4a8a;margin-top:4px;">合計（税込）：¥${d.total.toLocaleString()}</div>
+    <div style="margin-top:6px;">お支払い方法：${escapeHtml(d.payment || '-')}</div>
+  `;
+  const sigData = hasSig ? canvas.toDataURL('image/png') : '';
+  document.getElementById('rtSig').innerHTML = sigData
+    ? `<div>お客様署名：</div><img src="${sigData}" style="height:60px;margin-top:4px;">`
+    : '';
+  document.getElementById('rtIssued').textContent = '発行日時：' + d.timestamp;
+}
+
+async function generateReceiptPDF(d) {
+  fillReceiptTemplate(d);
+  const el = document.getElementById('receiptTemplate');
+  const canvasImg = await html2canvas(el, { scale:1.5, backgroundColor:'#ffffff' });
+  // JPEG圧縮でメール添付サイズを抑える（背景白のレシートなので画質劣化はほぼ気にならない）
+  const imgData = canvasImg.toDataURL('image/jpeg', 0.85);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit:'mm', format:'a4', compress:true });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let w = pageWidth - 20;
+  let h = canvasImg.height * w / canvasImg.width;
+  if (h > pageHeight - 20) {
+    h = pageHeight - 20;
+    w = canvasImg.width * h / canvasImg.height;
+  }
+  const x = (pageWidth - w) / 2;
+  pdf.addImage(imgData, 'JPEG', x, 10, w, h);
+  return pdf;
+}
+
+async function buildAndStoreReceipt(d) {
+  const pdf = await generateReceiptPDF(d);
+  lastReceiptDoc = pdf;
+  lastReceiptFilename = `領収書_${d.name || 'お客様'}_${d.visitDate || ''}.pdf`;
+  return pdf;
+}
+
+function downloadReceiptPdf() {
+  if (!lastReceiptDoc) return;
+  lastReceiptDoc.save(lastReceiptFilename);
+}
+
+// ===== EMAIL（領収書兼控え／PDFはEmailJS側で添付ファイル変数を設定すると自動添付されます）=====
+async function sendEmail(d) {
+  const workList = d.workItems.map(w=>`・${w.name}${w.note?'（'+w.note+'）':''}: ¥${w.price.toLocaleString()}`).join('\n');
+  const params = {
+    to_email:   d.email,
+    to_name:    d.name,
+    visit_date: d.visitDate,
+    maker:      [d.maker,d.washType].filter(Boolean).join(' '),
+    symptom:    d.symptom,
+    errors:     d.errors,
+    work_list:  workList,
+    subtotal:   '¥'+d.subtotal.toLocaleString(),
+    tax:        '¥'+d.tax.toLocaleString(),
+    total:      '¥'+d.total.toLocaleString(),
+    payment:    d.payment,
+    timestamp:  d.timestamp,
+    address:    d.address,
+    phone:      d.phone,
+    pdf_filename: lastReceiptFilename,
+  };
+  if (lastReceiptDoc) {
+    // EmailJSテンプレート側で添付ファイル変数（File型）を設定すると、このBase64が添付として届きます
+    const dataUri = lastReceiptDoc.output('datauristring');
+    params.pdf_base64 = dataUri.split(',')[1] || '';
+  }
+  await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, params);
+}
+
+// ===== SUBMIT =====
+document.getElementById('repairForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const errEl = document.getElementById('formError');
+  errEl.textContent = '';
+  if (!hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
+
+  const noEmail = noEmailEl.checked;
+  if (!noEmail && !getEmailValue()) {
+    errEl.textContent = 'メールアドレスを入力するか、「メールアドレスをお持ちでない」にチェックしてください。';
+    return;
+  }
+
+  const data = collectData();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='送信中...';
+
+  let notionOk = false, emailOk = false, notionErr = '', emailErr = '', pdfOk = false;
+
+  try { await buildAndStoreReceipt(data); pdfOk = true; } catch(err) { console.warn('PDF生成失敗:', err); }
+  try { await sendToNotion(data); notionOk=true; } catch(err) { notionErr=err.message; }
+  if (!noEmail) {
+    try { await sendEmail(data); emailOk=true; } catch(err) { emailErr=err.message; }
+  }
+
+  if (notionOk) {
+    document.getElementById('repairForm').style.display='none';
+    document.getElementById('successScreen').style.display='block';
+    document.getElementById('downloadPdfBtn').style.display = pdfOk ? 'inline-block' : 'none';
+    const msgEl = document.getElementById('successMsg');
+    if (noEmail) {
+      msgEl.textContent = 'メールアドレスのご登録がないため、下の「領収書PDFをダウンロード」ボタンからPDFを保存し、お客様にお渡し・共有してください。';
+    } else if (emailOk) {
+      msgEl.textContent = 'ご入力のメールアドレスに領収書兼控えをお送りしました。ご利用ありがとうございました。';
+    } else {
+      msgEl.textContent = 'メール送信に失敗しました。お手数ですが「領収書PDFをダウンロード」から保存してお客様にお渡しください。';
+      console.warn('メール送信失敗:', emailErr);
+    }
+  } else {
+    errEl.textContent='送信に失敗しました。担当者にお声がけください。（'+notionErr+')';
+    btn.disabled=false; btn.textContent='同意して送信する';
+  }
+});
+
+// ===== PWA: Service Worker登録 =====
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+  });
+}
+
+// ===== INIT =====
+buildTable();
+document.getElementById('visitDate').value = new Date().toISOString().slice(0,10);
+const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const m = months[new Date().getMonth()];
+document.getElementById('regMonth').value = m;
+document.getElementById('paymentMonth').value = m;
+</script>
+</body>
+</html>
