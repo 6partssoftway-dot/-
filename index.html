@@ -15,7 +15,6 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -335,11 +334,6 @@
 </div>
 
 <script>
-emailjs.init("l2eKNzwamFlkn0T8m");
-
-const EMAILJS_SERVICE  = "service_3zxvy3p";
-const EMAILJS_TEMPLATE = "template_6k7losz";
-
 // ===== WORK ITEMS（税抜価格）=====
 const ITEMS = [
   { id:'cleaning',       label:'クリーニング（洗濯槽・排水系）',        note:'分解洗浄含む',     price:42000 },
@@ -522,11 +516,12 @@ function collectData() {
   };
 }
 
-// ===== NOTION（Make/Zapier不要・EmailJSのWebhook経由で送る）=====
+// ===== NOTION書き込み ＋ 領収書メール送信（GAS Webhook経由・Gmail送信）=====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjdpG_7c9tAHVQWuR-yw3SI44L1N8qMFj4mz2HLUVDh-LiXuCV8GQSL-AIEzClInBG-Q/exec';
 
 async function sendToNotion(d) {
   const repairContent = [d.symptom, d.errors?'エラー:'+d.errors:'', d.workItems.map(w=>`${w.name}${w.note?'('+w.note+')':''}: ¥${w.price.toLocaleString()}`).join('\n')].filter(Boolean).join('\n\n');
+  const workList = d.workItems.map(w=>`・${w.name}${w.note?'（'+w.note+'）':''}: ¥${w.price.toLocaleString()}`).join('\n');
 
   const payload = {
     caseName:      d.caseName,
@@ -536,6 +531,8 @@ async function sendToNotion(d) {
     area:          d.area,
     makerType:     [d.maker, d.washType].filter(Boolean).join(' '),
     repairContent: repairContent,
+    subtotal:      d.subtotal,
+    tax:           d.tax,
     total:         d.total,
     netAmount:     d.netAmount,
     paymentStatus: d.paymentStatus,
@@ -545,6 +542,10 @@ async function sendToNotion(d) {
     regMonth:      d.regMonth,
     orderSource:   d.orderSource,
     contactMethod: d.contactMethod,
+    email:         d.email,
+    workList:      workList,
+    pdfFilename:   lastReceiptFilename || '',
+    pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
   };
 
   const res = await fetch(GAS_URL, {
@@ -559,7 +560,7 @@ async function sendToNotion(d) {
     const result = await res.json().catch(() => ({}));
     throw new Error(result.message || '送信エラー');
   }
-  // 200か、またはリダイレクト後でもOKとみなす
+  return res.json().catch(() => ({}));
 }
 
 // ===== 領収書PDF生成 =====
@@ -631,34 +632,6 @@ function downloadReceiptPdf() {
   lastReceiptDoc.save(lastReceiptFilename);
 }
 
-// ===== EMAIL（領収書兼控え／PDFはEmailJS側で添付ファイル変数を設定すると自動添付されます）=====
-async function sendEmail(d) {
-  const workList = d.workItems.map(w=>`・${w.name}${w.note?'（'+w.note+'）':''}: ¥${w.price.toLocaleString()}`).join('\n');
-  const params = {
-    to_email:   d.email,
-    to_name:    d.name,
-    visit_date: d.visitDate,
-    maker:      [d.maker,d.washType].filter(Boolean).join(' '),
-    symptom:    d.symptom,
-    errors:     d.errors,
-    work_list:  workList,
-    subtotal:   '¥'+d.subtotal.toLocaleString(),
-    tax:        '¥'+d.tax.toLocaleString(),
-    total:      '¥'+d.total.toLocaleString(),
-    payment:    d.payment,
-    timestamp:  d.timestamp,
-    address:    d.address,
-    phone:      d.phone,
-    pdf_filename: lastReceiptFilename,
-  };
-  if (lastReceiptDoc) {
-    // EmailJSテンプレート側で添付ファイル変数（File型）を設定すると、このBase64が添付として届きます
-    const dataUri = lastReceiptDoc.output('datauristring');
-    params.pdf_base64 = dataUri.split(',')[1] || '';
-  }
-  await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, params);
-}
-
 // ===== SUBMIT =====
 document.getElementById('repairForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -679,10 +652,12 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   let notionOk = false, emailOk = false, notionErr = '', emailErr = '', pdfOk = false;
 
   try { await buildAndStoreReceipt(data); pdfOk = true; } catch(err) { console.warn('PDF生成失敗:', err); }
-  try { await sendToNotion(data); notionOk=true; } catch(err) { notionErr=err.message; }
-  if (!noEmail) {
-    try { await sendEmail(data); emailOk=true; } catch(err) { emailErr=err.message; }
-  }
+  try {
+    const result = await sendToNotion(data);
+    notionOk = true;
+    emailOk = !!result.emailSent;
+    emailErr = result.emailError || '';
+  } catch(err) { notionErr=err.message; }
 
   if (notionOk) {
     document.getElementById('repairForm').style.display='none';
