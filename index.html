@@ -336,8 +336,9 @@
 <script>
 // ===== WORK ITEMS（税抜価格）=====
 const ITEMS = [
-  { id:'cleaning',       label:'クリーニング（洗濯槽・排水系）',        note:'分解洗浄含む',     price:42000 },
-  { id:'clog_internal',  label:'内部つまり除去（フィルター・配管等）',   note:'',                 price:32000 },
+  { id:'cleaning_drum',  label:'クリーニング（洗濯槽・排水系）ドラム式', note:'分解洗浄含む',     price:30000 },
+  { id:'cleaning_tate',  label:'クリーニング（洗濯槽・排水系）縦型',     note:'分解洗浄含む',     price:22000 },
+  { id:'clog_internal',  label:'クリーニング（乾燥）',                   note:'',                 price:28000 },
   { id:'drain_normal',   label:'排水つまり除去(縦型)',                   note:'',                 price:18000 },
   { id:'drain_drum',     label:'排水つまり除去(ドラム式)',               note:'排水口まで',       price:22000 },
   { id:'drum_remove',    label:'ドラム脱着作業（排水口アクセス用）',     note:'ドラムを外して対応', price:10000 },
@@ -346,7 +347,8 @@ const ITEMS = [
   { id:'parts',          label:'部品交換',                               note:'部品名を入力',     price:null },
   { id:'belt',           label:'ベルト交換',                             note:'',                 price:29800 },
   { id:'motor',          label:'モーター交換',                           note:'',                 price:19800 },
-  { id:'water_valve',    label:'給水弁交換',                             note:'',                 price:32000 },
+  { id:'water_valve_drum', label:'給水弁交換（ドラム式）',               note:'',                 price:22000 },
+  { id:'water_valve_tate', label:'給水弁交換（縦型）',                   note:'',                 price:20000 },
   { id:'packing',        label:'パッキン交換',                           note:'',                 price:39800 },
   { id:'transport',      label:'洗濯機運搬設置一式',                     note:'',                 price:19800 },
   { id:'reattach',       label:'取り外し・再取付',                       note:'基本作業',         price:1980 },
