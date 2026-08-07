@@ -1,4 +1,4 @@
-const CACHE_NAME = 'repair-app-cache-v1';
+const CACHE_NAME = 'repair-app-cache-v2';
 const APP_SHELL = [
   './index.html',
   './manifest.json',
@@ -24,11 +24,18 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// キャッシュ優先、失敗時のみネットワーク（外部CDN/APIはネットワークにそのまま流す）
+// ネットワーク優先、オフライン時のみキャッシュにフォールバック
+// （更新のたびにキャッシュが古いままにならないようにするため）
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return; // CDNやAPIは素通し
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    fetch(event.request)
+      .then(res => {
+        const resClone = res.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
