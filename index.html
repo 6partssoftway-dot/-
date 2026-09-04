@@ -557,12 +557,17 @@ async function sendToNotion(d) {
     redirect: 'follow',
   });
 
-  // GASは正常でも様々なレスポンスを返すため、ステータスコードで判断
+  // GASはアプリ側のエラーでもHTTP 200を返すことがあるため、
+  // 本文のstatusフィールドを見て成功/失敗を判定する
   if (!res.ok && res.status !== 0) {
     const result = await res.json().catch(() => ({}));
     throw new Error(result.message || '送信エラー');
   }
-  return res.json().catch(() => ({}));
+  const result = await res.json().catch(() => ({}));
+  if (result.status !== 'success') {
+    throw new Error(result.message || '送信エラー');
+  }
+  return result;
 }
 
 // ===== 領収書PDF生成 =====
