@@ -116,6 +116,10 @@
         <div class="field">
           <label>担当者名</label>
           <input type="text" id="staffName" placeholder="担当者">
+          <label class="no-email-check" id="reviewOptInWrap">
+            <input type="checkbox" id="reviewOptIn">
+            口コミ投稿のお願いメールを送ってもよい（領収書メールの30分後に送信）
+          </label>
         </div>
         <div class="field">
           <label>メーカー・機種名</label>
@@ -441,6 +445,7 @@ const emailDomainEl = document.getElementById('emailDomain');
 const emailDomainCustomEl = document.getElementById('emailDomainCustom');
 const noEmailEl = document.getElementById('noEmail');
 const emailFieldWrapEl = document.getElementById('emailFieldWrap');
+const reviewOptInEl = document.getElementById('reviewOptIn');
 
 emailDomainEl.addEventListener('change', () => {
   emailDomainCustomEl.style.display = emailDomainEl.value === '__other__' ? 'block' : 'none';
@@ -452,6 +457,8 @@ noEmailEl.addEventListener('change', () => {
   emailDomainEl.disabled = disabled;
   emailDomainCustomEl.disabled = disabled;
   emailFieldWrapEl.style.opacity = disabled ? '0.45' : '1';
+  if (disabled) reviewOptInEl.checked = false;
+  reviewOptInEl.disabled = disabled;
 });
 
 function getEmailValue() {
@@ -514,6 +521,7 @@ function collectData() {
     caseName: `${name}様 ${visitDate} 洗濯機修理`,
     subtotal, tax, total,
     netAmount: calcNetAmount(payment, total),
+    reviewOptIn: reviewOptInEl.checked,
     timestamp: new Date().toLocaleString('ja-JP'),
   };
 }
@@ -545,6 +553,7 @@ async function sendToNotion(d) {
     orderSource:   d.orderSource,
     contactMethod: d.contactMethod,
     email:         d.email,
+    reviewOptIn:   d.reviewOptIn,
     workList:      workList,
     pdfFilename:   lastReceiptFilename || '',
     pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
