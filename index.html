@@ -431,6 +431,20 @@ function showMainScreen(session) {
   document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   const staffNameEl = document.getElementById('staffName');
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
+  loadPriceListFromServer(session.token);
+}
+
+// サーバー側の価格表を取得して置き換える。取得できなければ、アプリ内蔵のデフォルト価格表（ITEMSの初期値）のまま動かす
+async function loadPriceListFromServer(sessionToken) {
+  try {
+    const result = await gasCall('getConfig', { session: sessionToken, configType: 'priceList' });
+    if (Array.isArray(result.items) && result.items.length > 0) {
+      ITEMS = result.items;
+      buildTable();
+    }
+  } catch (err) {
+    console.warn('価格表の取得に失敗したため、内蔵のデフォルト価格表を使用します:', err.message);
+  }
 }
 
 document.getElementById('loginForm').addEventListener('submit', async e => {
@@ -460,8 +474,8 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   showLoginScreen();
 });
 
-// ===== WORK ITEMS（税抜価格）=====
-const ITEMS = [
+// ===== WORK ITEMS（税抜価格・サーバー未接続時のフォールバック用デフォルト値）=====
+let ITEMS = [
   { id:'cleaning_drum',  label:'クリーニング（洗濯槽・排水系）ドラム式', note:'分解洗浄含む',     price:30000 },
   { id:'cleaning_tate',  label:'クリーニング（洗濯槽・排水系）縦型',     note:'分解洗浄含む',     price:22000 },
   { id:'clog_internal',  label:'クリーニング（乾燥）',                   note:'',                 price:28000 },
@@ -496,6 +510,7 @@ const ITEMS = [
 
 function buildTable() {
   const tbody = document.getElementById('workTableBody');
+  tbody.innerHTML = '';
   ITEMS.forEach(item => {
     const tr = document.createElement('tr');
     tr.dataset.id = item.id;
