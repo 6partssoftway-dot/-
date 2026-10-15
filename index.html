@@ -127,6 +127,26 @@
   .btn-add-row:hover { background:var(--blue-light); }
   .btn-row-delete { background:none; border:1px solid var(--red); color:var(--red); border-radius:3px; padding:3px 8px; font-size:11px; cursor:pointer; }
   .btn-row-delete:hover { background:#fdecea; }
+  /* staff cards */
+  .staff-card { border:1px solid var(--border); border-radius:6px; padding:16px; margin-bottom:14px; background:var(--gray-light); }
+  .staff-card.is-self { border-color:var(--blue); background:var(--blue-light); }
+  .staff-card .staff-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .staff-card .staff-self-badge { font-size:11px; color:var(--blue); font-weight:700; }
+  .staff-card .staff-field-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .staff-card .staff-field { display:flex; flex-direction:column; gap:4px; }
+  .staff-card .staff-field label { font-size:11px; font-weight:600; color:var(--gray); }
+  .staff-card .staff-field input, .staff-card .staff-field select { border:1px solid var(--border); border-radius:4px; padding:10px; font-size:15px; font-family:inherit; width:100%; box-sizing:border-box; }
+  .staff-card .pin-reveal-wrap input { font-size:16px; letter-spacing:.15em; }
+  .pref-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:20px; }
+  .pref-chip { display:flex; align-items:center; gap:5px; background:var(--blue); color:#fff; border-radius:14px; padding:4px 10px; font-size:12px; }
+  .pref-chip button { background:none; border:none; color:#fff; cursor:pointer; font-size:13px; line-height:1; padding:0; }
+  .pref-add-row { display:flex; gap:6px; }
+  .pref-add-row select { flex:1; }
+  .pref-add-row button { flex-shrink:0; background:none; border:1px solid var(--blue); color:var(--blue); border-radius:4px; padding:0 12px; font-size:12px; cursor:pointer; }
+  .staff-card-footer { display:flex; justify-content:flex-end; margin-top:12px; }
+  /* order sources */
+  .order-source-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .order-source-row input { flex:1; border:1px solid var(--border); border-radius:4px; padding:9px 10px; font-size:14px; font-family:inherit; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -319,10 +339,6 @@
           <label>お名前 <span class="req">*</span></label>
           <input type="text" id="name" required placeholder="山田 太郎">
         </div>
-        <div class="field">
-          <label>地域</label>
-          <input type="text" id="area" placeholder="例：渋谷区">
-        </div>
         <div class="field span-2">
           <label>住所</label>
           <input type="text" id="address" placeholder="東京都渋谷区...">
@@ -406,6 +422,7 @@
   <div class="admin-tabs">
     <button type="button" class="admin-tab-btn active" data-tab="price">価格表</button>
     <button type="button" class="admin-tab-btn" data-tab="staff">スタッフ</button>
+    <button type="button" class="admin-tab-btn" data-tab="orderSources">受注元</button>
   </div>
 
   <div class="section admin-tab-panel" id="adminTabPrice">
@@ -428,19 +445,23 @@
 
   <div class="section admin-tab-panel" id="adminTabStaff" hidden>
     <div class="section-title">【スタッフ】</div>
-    <table class="work-table admin-table">
-      <thead>
-        <tr>
-          <th>名前</th><th>メールアドレス</th><th>PIN</th><th>役割</th><th>有効</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="adminStaffTableBody"></tbody>
-    </table>
+    <div id="adminStaffList"></div>
     <button type="button" class="btn-add-row" id="addStaffRowBtn">＋ スタッフを追加</button>
     <div class="submit-area" style="padding:16px 0 0">
       <p id="staffAdminError" class="error-msg"></p>
       <p id="staffAdminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
       <button type="button" class="btn-submit" id="saveStaffBtn" style="max-width:240px">保存する</button>
+    </div>
+  </div>
+
+  <div class="section admin-tab-panel" id="adminTabOrderSources" hidden>
+    <div class="section-title">【受注元】</div>
+    <div id="adminOrderSourceList"></div>
+    <button type="button" class="btn-add-row" id="addOrderSourceRowBtn">＋ 受注元を追加</button>
+    <div class="submit-area" style="padding:16px 0 0">
+      <p id="orderSourceAdminError" class="error-msg"></p>
+      <p id="orderSourceAdminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
+      <button type="button" class="btn-submit" id="saveOrderSourcesBtn" style="max-width:240px">保存する</button>
     </div>
   </div>
 </div>
@@ -562,6 +583,7 @@ function showMainScreen(session) {
   const staffNameEl = document.getElementById('staffName');
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
   loadPriceListFromServer(session.token);
+  loadOrderSourcesFromServer(session.token);
 }
 
 // サーバー側の価格表を取得して置き換える。取得できなければ、アプリ内蔵のデフォルト価格表（ITEMSの初期値）のまま動かす
@@ -599,6 +621,7 @@ function openAdminScreen() {
   document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'price'));
   document.getElementById('adminTabPrice').hidden = false;
   document.getElementById('adminTabStaff').hidden = true;
+  document.getElementById('adminTabOrderSources').hidden = true;
   loadAdminPriceList();
 }
 
@@ -688,16 +711,18 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('adminTabPrice').hidden = tab !== 'price';
     document.getElementById('adminTabStaff').hidden = tab !== 'staff';
+    document.getElementById('adminTabOrderSources').hidden = tab !== 'orderSources';
     if (tab === 'staff') loadAdminStaff();
+    if (tab === 'orderSources') loadAdminOrderSources();
   });
 });
 
-// ===== 管理画面：スタッフ編集 =====
+// ===== 管理画面：スタッフ編集（カード形式） =====
 let adminStaffBaseVersion = null;
 
 document.getElementById('addStaffRowBtn').addEventListener('click', () => {
-  document.getElementById('adminStaffTableBody').appendChild(
-    buildAdminStaffRow({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true })
+  document.getElementById('adminStaffList').appendChild(
+    buildAdminStaffCard({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true, prefectures: [] })
   );
 });
 document.getElementById('saveStaffBtn').addEventListener('click', saveAdminStaff);
@@ -711,42 +736,123 @@ async function loadAdminStaff() {
   try {
     const result = await gasCall('getConfig', { session: session.token, configType: 'staff' });
     adminStaffBaseVersion = result.version;
-    const tbody = document.getElementById('adminStaffTableBody');
-    tbody.innerHTML = '';
-    result.staff.forEach(s => tbody.appendChild(buildAdminStaffRow(s)));
+    const list = document.getElementById('adminStaffList');
+    list.innerHTML = '';
+    result.staff.forEach(s => list.appendChild(buildAdminStaffCard(s)));
   } catch (err) {
     errEl.textContent = 'スタッフ情報の取得に失敗しました: ' + err.message;
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
   }
 }
 
-function buildAdminStaffRow(s) {
-  const tr = document.createElement('tr');
-  tr.dataset.staffId = s.id;
-  tr.innerHTML = `
-    <td><input type="text" class="staff-name" value="${escapeHtml(s.name || '')}"></td>
-    <td><input type="email" class="staff-email" value="${escapeHtml(s.email || '')}"></td>
-    <td>
-      <div class="pin-reveal-wrap">
-        <input type="password" class="staff-pin" value="${escapeHtml(s.pin || '')}" maxlength="6" inputmode="numeric">
-        <button type="button" class="btn-pin-toggle">表示</button>
+function buildAdminStaffCard(s) {
+  const session = getSession();
+  const isSelf = session && s.id === session.staffId;
+  const prefectures = Array.isArray(s.prefectures) ? s.prefectures.slice() : [];
+
+  const card = document.createElement('div');
+  card.className = 'staff-card' + (isSelf ? ' is-self' : '');
+  card.dataset.staffId = s.id;
+  card.innerHTML = `
+    <div class="staff-card-header">
+      <strong>${escapeHtml(s.name || '（新規スタッフ）')}</strong>
+      ${isSelf ? '<span class="staff-self-badge">あなたのアカウント（役割・有効・削除は固定）</span>' : ''}
+    </div>
+    <div class="staff-field-grid">
+      <div class="staff-field">
+        <label>名前</label>
+        <input type="text" class="staff-name" value="${escapeHtml(s.name || '')}">
       </div>
-    </td>
-    <td>
-      <select class="staff-role">
-        <option value="staff" ${s.role === 'staff' ? 'selected' : ''}>スタッフ</option>
-        <option value="admin" ${s.role === 'admin' ? 'selected' : ''}>管理者</option>
-      </select>
-    </td>
-    <td style="text-align:center"><input type="checkbox" class="staff-active" ${s.active ? 'checked' : ''}></td>
-    <td><button type="button" class="btn-row-delete">削除</button></td>`;
-  tr.querySelector('.btn-row-delete').addEventListener('click', () => tr.remove());
-  const pinInput = tr.querySelector('.staff-pin');
-  tr.querySelector('.btn-pin-toggle').addEventListener('click', e => {
+      <div class="staff-field">
+        <label>メールアドレス</label>
+        <input type="email" class="staff-email" value="${escapeHtml(s.email || '')}">
+      </div>
+      <div class="staff-field">
+        <label>PIN</label>
+        <div class="pin-reveal-wrap">
+          <input type="password" class="staff-pin" value="${escapeHtml(s.pin || '')}" maxlength="6" inputmode="numeric">
+          <button type="button" class="btn-pin-toggle">表示</button>
+        </div>
+      </div>
+      <div class="staff-field">
+        <label>役割</label>
+        <select class="staff-role" ${isSelf ? 'disabled' : ''}>
+          <option value="staff" ${s.role === 'staff' ? 'selected' : ''}>スタッフ</option>
+          <option value="admin" ${s.role === 'admin' ? 'selected' : ''}>管理者</option>
+        </select>
+      </div>
+      <div class="staff-field">
+        <label>有効</label>
+        <label class="no-email-check" style="margin-top:6px">
+          <input type="checkbox" class="staff-active" ${s.active ? 'checked' : ''} ${isSelf ? 'disabled' : ''}>
+          このスタッフを有効にする
+        </label>
+      </div>
+      <div class="staff-field">
+        <label>担当都道府県（複数選択可）</label>
+        <div class="pref-chips"></div>
+        <div class="pref-add-row">
+          <select class="pref-select">
+            <option value="">追加する都道府県を選択</option>
+            ${PREFECTURES.map(p => `<option value="${p}">${p}</option>`).join('')}
+          </select>
+          <button type="button" class="pref-add-btn">追加</button>
+        </div>
+      </div>
+    </div>
+    <div class="staff-card-footer">
+      <button type="button" class="btn-row-delete" ${isSelf ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>このスタッフを削除</button>
+    </div>`;
+
+  // PIN表示トグル
+  const pinInput = card.querySelector('.staff-pin');
+  card.querySelector('.btn-pin-toggle').addEventListener('click', e => {
     pinInput.type = pinInput.type === 'password' ? 'text' : 'password';
     e.target.textContent = pinInput.type === 'password' ? '表示' : '隠す';
   });
-  return tr;
+
+  // 都道府県チップ
+  const chipsEl = card.querySelector('.pref-chips');
+  function renderChips() {
+    chipsEl.innerHTML = prefectures.map((p, idx) => `
+      <span class="pref-chip" data-idx="${idx}">${escapeHtml(p)}<button type="button" aria-label="削除">×</button></span>
+    `).join('');
+    chipsEl.querySelectorAll('.pref-chip button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.parentElement.dataset.idx);
+        prefectures.splice(idx, 1);
+        renderChips();
+      });
+    });
+  }
+  renderChips();
+  card.querySelector('.pref-add-btn').addEventListener('click', () => {
+    const sel = card.querySelector('.pref-select');
+    const val = sel.value;
+    if (val && !prefectures.includes(val)) {
+      prefectures.push(val);
+      renderChips();
+    }
+    sel.value = '';
+  });
+  card._getPrefectures = () => prefectures;
+
+  // 削除（自分自身は不可。確認ダイアログあり）
+  if (!isSelf) {
+    card.querySelector('.btn-row-delete').addEventListener('click', () => {
+      const name = card.querySelector('.staff-name').value || '（名前未入力）';
+      if (confirm(`「${name}」を削除します。よろしいですか？`)) {
+        card.remove();
+      }
+    });
+  }
+
+  // 名前を変更したらヘッダーにも反映
+  card.querySelector('.staff-name').addEventListener('input', e => {
+    card.querySelector('.staff-card-header strong').textContent = e.target.value || '（新規スタッフ）';
+  });
+
+  return card;
 }
 
 async function saveAdminStaff() {
@@ -754,14 +860,15 @@ async function saveAdminStaff() {
   const okEl = document.getElementById('staffAdminSuccess');
   errEl.textContent = ''; okEl.textContent = '';
 
-  const rows = [...document.querySelectorAll('#adminStaffTableBody tr')];
-  const staff = rows.map(tr => ({
-    id: tr.dataset.staffId,
-    name: tr.querySelector('.staff-name').value.trim(),
-    email: tr.querySelector('.staff-email').value.trim(),
-    pin: tr.querySelector('.staff-pin').value.trim(),
-    role: tr.querySelector('.staff-role').value,
-    active: tr.querySelector('.staff-active').checked,
+  const cards = [...document.querySelectorAll('#adminStaffList .staff-card')];
+  const staff = cards.map(card => ({
+    id: card.dataset.staffId,
+    name: card.querySelector('.staff-name').value.trim(),
+    email: card.querySelector('.staff-email').value.trim(),
+    pin: card.querySelector('.staff-pin').value.trim(),
+    role: card.querySelector('.staff-role').value,
+    active: card.querySelector('.staff-active').checked,
+    prefectures: card._getPrefectures(),
   }));
 
   const session = getSession();
@@ -785,6 +892,95 @@ async function saveAdminStaff() {
     }
   } finally {
     btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+// ===== 管理画面：受注元編集 =====
+let adminOrderSourcesBaseVersion = null;
+
+document.getElementById('addOrderSourceRowBtn').addEventListener('click', () => {
+  document.getElementById('adminOrderSourceList').appendChild(buildOrderSourceRow(''));
+});
+document.getElementById('saveOrderSourcesBtn').addEventListener('click', saveAdminOrderSources);
+
+async function loadAdminOrderSources() {
+  const errEl = document.getElementById('orderSourceAdminError');
+  const okEl = document.getElementById('orderSourceAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  try {
+    const result = await gasCall('getConfig', { session: session.token, configType: 'orderSources' });
+    adminOrderSourcesBaseVersion = result.version;
+    const list = document.getElementById('adminOrderSourceList');
+    list.innerHTML = '';
+    result.items.forEach(v => list.appendChild(buildOrderSourceRow(v)));
+  } catch (err) {
+    errEl.textContent = '受注元の取得に失敗しました: ' + err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  }
+}
+
+function buildOrderSourceRow(value) {
+  const row = document.createElement('div');
+  row.className = 'order-source-row';
+  row.innerHTML = `
+    <input type="text" class="order-source-value" value="${escapeHtml(value || '')}" placeholder="例：S（自社）">
+    <button type="button" class="btn-row-delete">削除</button>`;
+  row.querySelector('.btn-row-delete').addEventListener('click', () => {
+    const v = row.querySelector('.order-source-value').value || '（空欄）';
+    if (confirm(`受注元「${v}」を削除します。よろしいですか？`)) {
+      row.remove();
+    }
+  });
+  return row;
+}
+
+async function saveAdminOrderSources() {
+  const errEl = document.getElementById('orderSourceAdminError');
+  const okEl = document.getElementById('orderSourceAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+
+  const items = [...document.querySelectorAll('#adminOrderSourceList .order-source-value')]
+    .map(el => el.value.trim());
+
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('saveOrderSourcesBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    const result = await gasCall('saveConfig', {
+      session: session.token, configType: 'orderSources', baseVersion: adminOrderSourcesBaseVersion, items
+    });
+    adminOrderSourcesBaseVersion = result.version;
+    okEl.textContent = '保存しました。';
+    await loadOrderSourcesFromServer(session.token);
+  } catch (err) {
+    if (err.code === 'session_expired') {
+      clearSession(); showLoginScreen();
+    } else if (err.code === 'version_conflict') {
+      await loadAdminOrderSources();
+      errEl.textContent = err.message;
+    } else {
+      errEl.textContent = err.message;
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+// 修理フォームの「受注元」プルダウンをサーバー設定で更新（取得できなければHTML内蔵の既定値のまま）
+async function loadOrderSourcesFromServer(sessionToken) {
+  try {
+    const result = await gasCall('getConfig', { session: sessionToken, configType: 'orderSources' });
+    if (Array.isArray(result.items) && result.items.length > 0) {
+      const sel = document.getElementById('orderSource');
+      const current = sel.value;
+      sel.innerHTML = '<option value="">選択してください</option>' +
+        result.items.map(v => `<option${v === current ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    }
+  } catch (err) {
+    console.warn('受注元の取得に失敗したため、内蔵の既定値を使用します:', err.message);
   }
 }
 
@@ -880,6 +1076,17 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   clearSession();
   showLoginScreen();
 });
+
+// ===== 都道府県一覧（スタッフの担当都道府県選択用）=====
+const PREFECTURES = [
+  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+];
 
 // ===== WORK ITEMS（税抜価格・サーバー未接続時のフォールバック用デフォルト値）=====
 let ITEMS = [
@@ -1064,7 +1271,6 @@ function collectData() {
     name, phone: document.getElementById('phone').value,
     email: getEmailValue(),
     address: document.getElementById('address').value,
-    area: document.getElementById('area').value,
     visitDate, maker: document.getElementById('maker').value,
     washType: document.querySelector('input[name="washType"]:checked')?.value||'',
     symptom: document.getElementById('symptom').value,
@@ -1095,7 +1301,6 @@ async function sendToNotion(d) {
     name:          d.name,
     phone:         d.phone,
     address:       d.address,
-    area:          d.area,
     makerType:     [d.maker, d.washType].filter(Boolean).join(' '),
     repairContent: repairContent,
     subtotal:      d.subtotal,
