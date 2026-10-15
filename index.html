@@ -171,6 +171,10 @@
     <!-- 担当者・機器情報 -->
     <div class="section">
       <div class="section-title">【担当者・機器情報】</div>
+      <label class="no-email-check" id="cannotRepairWrap" style="margin-bottom:14px;background:#fff0f0;border:1px solid #f0c0c0;border-radius:4px;padding:8px 12px">
+        <input type="checkbox" id="cannotRepairCheck">
+        修理不可（作業なし・診断のみ／料金は発生しません）
+      </label>
       <div class="grid-2">
         <div class="field">
           <label>訪問日</label>
@@ -234,7 +238,7 @@
     </div>
 
     <!-- 作業内容・料金 -->
-    <div class="section">
+    <div class="section" id="workSection">
       <div class="section-title">【作業内容・料金一覧】</div>
       <table class="work-table">
         <thead>
@@ -884,6 +888,20 @@ noEmailEl.addEventListener('change', () => {
   reviewOptInEl.disabled = disabled;
 });
 
+// ===== 修理不可 =====
+const cannotRepairCheckEl = document.getElementById('cannotRepairCheck');
+cannotRepairCheckEl.addEventListener('change', () => {
+  const cannotRepair = cannotRepairCheckEl.checked;
+  document.getElementById('workSection').hidden = cannotRepair;
+  if (cannotRepair) {
+    document.querySelectorAll('.item-check:checked').forEach(cb => {
+      cb.checked = false;
+      cb.closest('tr').classList.remove('selected');
+    });
+    calcTotal();
+  }
+});
+
 function getEmailValue() {
   if (noEmailEl.checked) return '';
   const local = emailLocalEl.value.trim();
@@ -945,6 +963,7 @@ function collectData() {
     subtotal, tax, total,
     netAmount: calcNetAmount(payment, total),
     reviewOptIn: reviewOptInEl.checked,
+    repairPossible: !cannotRepairCheckEl.checked,
     timestamp: new Date().toLocaleString('ja-JP'),
   };
 }
@@ -975,6 +994,7 @@ async function sendToNotion(d) {
     contactMethod: d.contactMethod,
     email:         d.email,
     reviewOptIn:   d.reviewOptIn,
+    repairPossible: d.repairPossible,
     workList:      workList,
     pdfFilename:   lastReceiptFilename || '',
     pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
