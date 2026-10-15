@@ -118,8 +118,9 @@
     <p>洗濯機修理センター</p>
   </div>
   <div class="login-body">
-    <p class="hint">PINを入力してください</p>
+    <p class="hint">メールアドレスとPINを入力してください</p>
     <form id="loginForm">
+      <input type="email" id="emailInput" placeholder="example@gmail.com" autocomplete="username" required style="margin-bottom:10px">
       <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" required>
       <p id="loginError" class="error-msg" style="text-align:center;margin-top:10px"></p>
       <button type="submit" class="btn-login" id="loginBtn">ログイン</button>
@@ -426,11 +427,12 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   const errEl = document.getElementById('loginError');
   const btn = document.getElementById('loginBtn');
+  const email = document.getElementById('emailInput').value.trim();
   const pin = document.getElementById('pinInput').value.trim();
   errEl.textContent = '';
   btn.disabled = true; btn.textContent = 'ログイン中...';
   try {
-    const result = await gasCall('login', { pin });
+    const result = await gasCall('login', { email, pin });
     const expiresAt = Date.now() + 12 * 60 * 60 * 1000; // 12時間
     const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, expiresAt };
     saveSession(session);
