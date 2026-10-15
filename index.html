@@ -109,8 +109,17 @@
   .btn-login:disabled { background:#aaa; cursor:not-allowed; }
   /* user bar */
   .user-bar { display:flex; justify-content:space-between; align-items:center; background:var(--blue-mid); color:#fff; padding:6px 20px; font-size:12px; }
+  .user-bar .bar-actions { display:flex; gap:8px; align-items:center; }
   .user-bar .btn-logout { background:none; border:1px solid rgba(255,255,255,.5); color:#fff; border-radius:3px; padding:3px 10px; font-size:11px; cursor:pointer; }
   .user-bar .btn-logout:hover { background:rgba(255,255,255,.15); }
+  /* admin */
+  .admin-table input { border:1px solid var(--border); border-radius:3px; padding:5px 7px; font-size:12px; font-family:inherit; width:100%; }
+  .admin-table input[type="checkbox"] { width:auto; }
+  .admin-table td { padding:5px 6px; }
+  .btn-add-row { background:none; border:1px dashed var(--blue); color:var(--blue); border-radius:3px; padding:6px 14px; font-size:12px; cursor:pointer; margin-top:10px; }
+  .btn-add-row:hover { background:var(--blue-light); }
+  .btn-row-delete { background:none; border:1px solid var(--red); color:var(--red); border-radius:3px; padding:3px 8px; font-size:11px; cursor:pointer; }
+  .btn-row-delete:hover { background:#fdecea; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -141,7 +150,10 @@
 <div class="page" id="mainPage" hidden>
   <div class="user-bar">
     <span id="userBarName"></span>
-    <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
+    <div class="bar-actions">
+      <button type="button" class="btn-logout" id="adminOpenBtn" hidden>⚙ 管理画面</button>
+      <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
+    </div>
   </div>
   <div class="page-header">
     <h1>洗濯機 修理作業報告書・同意書</h1>
@@ -368,6 +380,36 @@
   </div>
 </div>
 
+<div class="page" id="adminScreen" hidden>
+  <div class="user-bar">
+    <span id="adminBarName"></span>
+    <div class="bar-actions">
+      <button type="button" class="btn-logout" id="adminBackBtn">← フォームに戻る</button>
+    </div>
+  </div>
+  <div class="page-header">
+    <h1>管理画面</h1>
+    <p>価格表の編集</p>
+  </div>
+  <div class="section">
+    <div class="section-title">【価格表】</div>
+    <table class="work-table admin-table">
+      <thead>
+        <tr>
+          <th>ID</th><th>作業内容</th><th>備考</th><th>金額</th><th>値引き</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="adminPriceTableBody"></tbody>
+    </table>
+    <button type="button" class="btn-add-row" id="addPriceRowBtn">＋ 項目を追加</button>
+    <div class="submit-area" style="padding:16px 0 0">
+      <p id="adminError" class="error-msg"></p>
+      <p id="adminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
+      <button type="button" class="btn-submit" id="savePriceListBtn" style="max-width:240px">保存する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 領収書PDF用の非表示テンプレート（画面には出さず、html2canvasでの画像化専用） -->
 <div id="receiptTemplate" style="position:absolute;left:-9999px;top:0;width:600px;background:#fff;padding:28px;font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a202c;">
   <div style="text-align:center;border-bottom:3px solid #1a4a8a;padding-bottom:12px;margin-bottom:16px;">
@@ -423,12 +465,15 @@ async function gasCall(action, extra) {
 function showLoginScreen() {
   document.getElementById('loginScreen').hidden = false;
   document.getElementById('mainPage').hidden = true;
+  document.getElementById('adminScreen').hidden = true;
 }
 
 function showMainScreen(session) {
   document.getElementById('loginScreen').hidden = true;
+  document.getElementById('adminScreen').hidden = true;
   document.getElementById('mainPage').hidden = false;
   document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
+  document.getElementById('adminOpenBtn').hidden = session.role !== 'admin';
   const staffNameEl = document.getElementById('staffName');
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
   loadPriceListFromServer(session.token);
@@ -444,6 +489,106 @@ async function loadPriceListFromServer(sessionToken) {
     }
   } catch (err) {
     console.warn('価格表の取得に失敗したため、内蔵のデフォルト価格表を使用します:', err.message);
+  }
+}
+
+// ===== 管理画面：価格表編集 =====
+let adminPriceBaseVersion = null;
+
+document.getElementById('adminOpenBtn').addEventListener('click', openAdminScreen);
+document.getElementById('adminBackBtn').addEventListener('click', closeAdminScreen);
+document.getElementById('addPriceRowBtn').addEventListener('click', () => {
+  document.getElementById('adminPriceTableBody').appendChild(
+    buildAdminPriceRow({ id: '', label: '', note: '', price: 0, discount: false })
+  );
+});
+document.getElementById('savePriceListBtn').addEventListener('click', saveAdminPriceList);
+
+function openAdminScreen() {
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  document.getElementById('mainPage').hidden = true;
+  document.getElementById('adminScreen').hidden = false;
+  document.getElementById('adminBarName').textContent = document.getElementById('userBarName').textContent;
+  loadAdminPriceList();
+}
+
+function closeAdminScreen() {
+  document.getElementById('adminScreen').hidden = true;
+  document.getElementById('mainPage').hidden = false;
+}
+
+async function loadAdminPriceList() {
+  const errEl = document.getElementById('adminError');
+  const okEl = document.getElementById('adminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  try {
+    const result = await gasCall('getConfig', { session: session.token, configType: 'priceList' });
+    adminPriceBaseVersion = result.version;
+    const tbody = document.getElementById('adminPriceTableBody');
+    tbody.innerHTML = '';
+    result.items.forEach(item => tbody.appendChild(buildAdminPriceRow(item)));
+  } catch (err) {
+    errEl.textContent = '価格表の取得に失敗しました: ' + err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  }
+}
+
+function buildAdminPriceRow(item) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="admin-id" value="${escapeHtml(item.id || '')}"></td>
+    <td><input type="text" class="admin-label" value="${escapeHtml(item.label || '')}"></td>
+    <td><input type="text" class="admin-note" value="${escapeHtml(item.note || '')}"></td>
+    <td><input type="number" class="admin-price" value="${item.price ?? ''}" placeholder="（入力式）" min="0"></td>
+    <td style="text-align:center"><input type="checkbox" class="admin-discount" ${item.discount ? 'checked' : ''}></td>
+    <td><button type="button" class="btn-row-delete">削除</button></td>`;
+  tr.querySelector('.btn-row-delete').addEventListener('click', () => tr.remove());
+  return tr;
+}
+
+async function saveAdminPriceList() {
+  const errEl = document.getElementById('adminError');
+  const okEl = document.getElementById('adminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+
+  const rows = [...document.querySelectorAll('#adminPriceTableBody tr')];
+  const items = rows.map(tr => {
+    const id = tr.querySelector('.admin-id').value.trim();
+    const label = tr.querySelector('.admin-label').value.trim();
+    const note = tr.querySelector('.admin-note').value.trim();
+    const priceRaw = tr.querySelector('.admin-price').value;
+    const discount = tr.querySelector('.admin-discount').checked;
+    const item = { id, label, note, price: priceRaw === '' ? null : Number(priceRaw) };
+    if (discount) item.discount = true;
+    return item;
+  });
+
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('savePriceListBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    const result = await gasCall('saveConfig', {
+      session: session.token, configType: 'priceList', baseVersion: adminPriceBaseVersion, items
+    });
+    adminPriceBaseVersion = result.version;
+    okEl.textContent = '保存しました。';
+    ITEMS = items;
+    buildTable();
+  } catch (err) {
+    if (err.code === 'session_expired') {
+      clearSession(); showLoginScreen();
+    } else if (err.code === 'version_conflict') {
+      await loadAdminPriceList(); // ここでerrEl/okElの内容は一旦クリアされる
+      errEl.textContent = err.message;
+    } else {
+      errEl.textContent = err.message;
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
   }
 }
 
