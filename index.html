@@ -95,10 +95,43 @@
   .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
   .btn-download:hover { opacity:.9; }
   @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} }
+  /* login */
+  .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
+  .login-body { padding:28px 24px; }
+  .login-body p.hint { font-size:12px; color:var(--gray); margin-bottom:16px; text-align:center; }
+  #pinInput { font-size:22px; letter-spacing:.3em; text-align:center; padding:12px; }
+  .btn-login { background:var(--blue); color:#fff; border:none; border-radius:4px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:14px; }
+  .btn-login:hover { background:var(--blue-mid); }
+  .btn-login:disabled { background:#aaa; cursor:not-allowed; }
+  /* user bar */
+  .user-bar { display:flex; justify-content:space-between; align-items:center; background:var(--blue-mid); color:#fff; padding:6px 20px; font-size:12px; }
+  .user-bar .btn-logout { background:none; border:1px solid rgba(255,255,255,.5); color:#fff; border-radius:3px; padding:3px 10px; font-size:11px; cursor:pointer; }
+  .user-bar .btn-logout:hover { background:rgba(255,255,255,.15); }
+  [hidden] { display:none !important; }
 </style>
 </head>
 <body>
-<div class="page">
+
+<div class="login-page" id="loginScreen">
+  <div class="page-header">
+    <h1>ログイン</h1>
+    <p>洗濯機修理センター</p>
+  </div>
+  <div class="login-body">
+    <p class="hint">PINを入力してください</p>
+    <form id="loginForm">
+      <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" required>
+      <p id="loginError" class="error-msg" style="text-align:center;margin-top:10px"></p>
+      <button type="submit" class="btn-login" id="loginBtn">ログイン</button>
+    </form>
+  </div>
+</div>
+
+<div class="page" id="mainPage" hidden>
+  <div class="user-bar">
+    <span id="userBarName"></span>
+    <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
+  </div>
   <div class="page-header">
     <h1>洗濯機 修理作業報告書・同意書</h1>
     <p>洗濯機修理センター ／ 作業完了後、お客様にご確認・ご署名いただいてください</p>
@@ -338,6 +371,83 @@
 </div>
 
 <script>
+// ===== 認証（PINログイン・セッション管理）=====
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjdpG_7c9tAHVQWuR-yw3SI44L1N8qMFj4mz2HLUVDh-LiXuCV8GQSL-AIEzClInBG-Q/exec';
+const SESSION_KEY = 'swc_session';
+
+function getSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s.token || !s.expiresAt || Date.now() > s.expiresAt) return null;
+    return s;
+  } catch (e) { return null; }
+}
+
+function saveSession(s) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+async function gasCall(action, extra) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(Object.assign({ action }, extra)),
+    redirect: 'follow',
+  });
+  const result = await res.json().catch(() => ({}));
+  if (result.status !== 'success') {
+    const err = new Error(result.message || '通信エラーが発生しました');
+    err.code = result.code || '';
+    throw err;
+  }
+  return result;
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').hidden = false;
+  document.getElementById('mainPage').hidden = true;
+}
+
+function showMainScreen(session) {
+  document.getElementById('loginScreen').hidden = true;
+  document.getElementById('mainPage').hidden = false;
+  document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
+  const staffNameEl = document.getElementById('staffName');
+  if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
+}
+
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  const pin = document.getElementById('pinInput').value.trim();
+  errEl.textContent = '';
+  btn.disabled = true; btn.textContent = 'ログイン中...';
+  try {
+    const result = await gasCall('login', { pin });
+    const expiresAt = Date.now() + 12 * 60 * 60 * 1000; // 12時間
+    const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, expiresAt };
+    saveSession(session);
+    document.getElementById('pinInput').value = '';
+    showMainScreen(session);
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'ログイン';
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  clearSession();
+  showLoginScreen();
+});
+
 // ===== WORK ITEMS（税抜価格）=====
 const ITEMS = [
   { id:'cleaning_drum',  label:'クリーニング（洗濯槽・排水系）ドラム式', note:'分解洗浄含む',     price:30000 },
@@ -527,13 +637,11 @@ function collectData() {
 }
 
 // ===== NOTION書き込み ＋ 領収書メール送信（GAS Webhook経由・Gmail送信）=====
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjdpG_7c9tAHVQWuR-yw3SI44L1N8qMFj4mz2HLUVDh-LiXuCV8GQSL-AIEzClInBG-Q/exec';
-
 async function sendToNotion(d) {
   const repairContent = [d.symptom, d.errors?'エラー:'+d.errors:'', d.workItems.map(w=>`${w.name}${w.note?'('+w.note+')':''}: ¥${w.price.toLocaleString()}`).join('\n')].filter(Boolean).join('\n\n');
   const workList = d.workItems.map(w=>`・${w.name}${w.note?'（'+w.note+'）':''}: ¥${w.price.toLocaleString()}`).join('\n');
 
-  const payload = {
+  const data = {
     caseName:      d.caseName,
     name:          d.name,
     phone:         d.phone,
@@ -559,24 +667,10 @@ async function sendToNotion(d) {
     pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
   };
 
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(payload),
-    redirect: 'follow',
-  });
+  const session = getSession();
+  if (!session) { const e = new Error('セッションが切れました。再度ログインしてください。'); e.code = 'session_expired'; throw e; }
 
-  // GASはアプリ側のエラーでもHTTP 200を返すことがあるため、
-  // 本文のstatusフィールドを見て成功/失敗を判定する
-  if (!res.ok && res.status !== 0) {
-    const result = await res.json().catch(() => ({}));
-    throw new Error(result.message || '送信エラー');
-  }
-  const result = await res.json().catch(() => ({}));
-  if (result.status !== 'success') {
-    throw new Error(result.message || '送信エラー');
-  }
-  return result;
+  return gasCall('submitRepair', { session: session.token, data });
 }
 
 // ===== 領収書PDF生成 =====
@@ -673,7 +767,16 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     notionOk = true;
     emailOk = !!result.emailSent;
     emailErr = result.emailError || '';
-  } catch(err) { notionErr=err.message; }
+  } catch(err) {
+    notionErr = err.message;
+    if (err.code === 'session_expired') {
+      clearSession();
+      btn.disabled=false; btn.textContent='同意して送信する';
+      showLoginScreen();
+      document.getElementById('loginError').textContent = 'セッションが切れました。再度ログインしてください。';
+      return;
+    }
+  }
 
   if (notionOk) {
     document.getElementById('repairForm').style.display='none';
@@ -708,6 +811,13 @@ const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10
 const m = months[new Date().getMonth()];
 document.getElementById('regMonth').value = m;
 document.getElementById('paymentMonth').value = m;
+
+const initialSession = getSession();
+if (initialSession) {
+  showMainScreen(initialSession);
+} else {
+  showLoginScreen();
+}
 </script>
 </body>
 </html>
