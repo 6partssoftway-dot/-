@@ -99,8 +99,12 @@
   .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
   .login-body { padding:28px 24px; }
   .login-body p.hint { font-size:12px; color:var(--gray); margin-bottom:16px; text-align:center; }
-  #pinInput { font-size:22px; letter-spacing:.3em; text-align:center; padding:12px; }
-  .btn-login { background:var(--blue); color:#fff; border:none; border-radius:4px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:14px; }
+  .login-field { margin-bottom:14px; }
+  .login-field label { display:block; font-size:11px; font-weight:600; color:var(--gray); margin-bottom:4px; }
+  .login-field input { width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:4px; padding:11px 12px; font-size:16px; font-family:inherit; }
+  .login-field input:focus { outline:none; border-color:var(--blue-mid); background:var(--blue-light); }
+  #pinInput { letter-spacing:.3em; text-align:center; }
+  .btn-login { background:var(--blue); color:#fff; border:none; border-radius:4px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; width:100%; margin-top:4px; }
   .btn-login:hover { background:var(--blue-mid); }
   .btn-login:disabled { background:#aaa; cursor:not-allowed; }
   /* user bar */
@@ -120,8 +124,14 @@
   <div class="login-body">
     <p class="hint">メールアドレスとPINを入力してください</p>
     <form id="loginForm">
-      <input type="email" id="emailInput" placeholder="example@gmail.com" autocomplete="username" required style="margin-bottom:10px">
-      <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" required>
+      <div class="login-field">
+        <label for="emailInput">メールアドレス</label>
+        <input type="email" id="emailInput" placeholder="example@gmail.com" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label for="pinInput">PIN</label>
+        <input type="password" id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="off" required>
+      </div>
       <p id="loginError" class="error-msg" style="text-align:center;margin-top:10px"></p>
       <button type="submit" class="btn-login" id="loginBtn">ログイン</button>
     </form>
