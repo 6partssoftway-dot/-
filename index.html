@@ -158,6 +158,7 @@
   <div class="user-bar">
     <span id="userBarName"></span>
     <div class="bar-actions">
+      <button type="button" class="btn-logout" id="analyticsOpenBtn">📊 実績</button>
       <button type="button" class="btn-logout" id="adminOpenBtn" hidden>⚙ 管理画面</button>
       <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
     </div>
@@ -444,6 +445,54 @@
   </div>
 </div>
 
+<div class="page" id="analyticsScreen" hidden>
+  <div class="user-bar">
+    <span id="analyticsBarName"></span>
+    <div class="bar-actions">
+      <button type="button" class="btn-logout" id="analyticsBackBtn">← フォームに戻る</button>
+    </div>
+  </div>
+  <div class="page-header">
+    <h1>実績</h1>
+    <p id="analyticsScopeNote">期間を選んで更新してください</p>
+  </div>
+  <div class="section">
+    <div class="grid-2" style="align-items:end;margin-bottom:12px">
+      <div class="field">
+        <label>期間</label>
+        <select id="analyticsPreset">
+          <option value="thisMonth">今月</option>
+          <option value="last30">過去30日</option>
+          <option value="custom">カスタム</option>
+        </select>
+      </div>
+      <div class="field" id="analyticsCustomRangeWrap" style="display:none">
+        <label>開始日〜終了日</label>
+        <div style="display:flex;gap:6px">
+          <input type="date" id="analyticsFrom">
+          <input type="date" id="analyticsTo">
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn-add-row" id="analyticsRefreshBtn">更新</button>
+    <p id="analyticsError" class="error-msg" style="margin-top:10px"></p>
+
+    <div class="total-area" style="flex-direction:column;align-items:flex-end;gap:6px;margin-top:16px">
+      <span style="font-size:13px;color:var(--gray)">件数: <strong id="analyticsTotalVisits">-</strong></span>
+      <span class="total">平均売上: <strong id="analyticsAvgRevenue">-</strong></span>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="section-title">地域別 件数</div>
+      <table class="work-table"><tbody id="analyticsByRegionBody"></tbody></table>
+    </div>
+    <div style="margin-top:20px">
+      <div class="section-title">担当者別 件数・平均売上</div>
+      <table class="work-table"><tbody id="analyticsByStaffBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
 <!-- 領収書PDF用の非表示テンプレート（画面には出さず、html2canvasでの画像化専用） -->
 <div id="receiptTemplate" style="position:absolute;left:-9999px;top:0;width:600px;background:#fff;padding:28px;font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a202c;">
   <div style="text-align:center;border-bottom:3px solid #1a4a8a;padding-bottom:12px;margin-bottom:16px;">
@@ -500,11 +549,13 @@ function showLoginScreen() {
   document.getElementById('loginScreen').hidden = false;
   document.getElementById('mainPage').hidden = true;
   document.getElementById('adminScreen').hidden = true;
+  document.getElementById('analyticsScreen').hidden = true;
 }
 
 function showMainScreen(session) {
   document.getElementById('loginScreen').hidden = true;
   document.getElementById('adminScreen').hidden = true;
+  document.getElementById('analyticsScreen').hidden = true;
   document.getElementById('mainPage').hidden = false;
   document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   document.getElementById('adminOpenBtn').hidden = session.role !== 'admin';
@@ -734,6 +785,72 @@ async function saveAdminStaff() {
     }
   } finally {
     btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+// ===== 実績（分析） =====
+document.getElementById('analyticsOpenBtn').addEventListener('click', openAnalyticsScreen);
+document.getElementById('analyticsBackBtn').addEventListener('click', closeAnalyticsScreen);
+document.getElementById('analyticsRefreshBtn').addEventListener('click', loadAnalytics);
+document.getElementById('analyticsPreset').addEventListener('change', () => {
+  const isCustom = document.getElementById('analyticsPreset').value === 'custom';
+  document.getElementById('analyticsCustomRangeWrap').style.display = isCustom ? 'block' : 'none';
+});
+
+function openAnalyticsScreen() {
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  document.getElementById('mainPage').hidden = true;
+  document.getElementById('analyticsScreen').hidden = false;
+  document.getElementById('analyticsBarName').textContent = document.getElementById('userBarName').textContent;
+  document.getElementById('analyticsScopeNote').textContent =
+    session.role === 'admin' ? '全スタッフの実績を表示しています' : 'あなた自身の実績のみ表示しています';
+  loadAnalytics();
+}
+
+function closeAnalyticsScreen() {
+  document.getElementById('analyticsScreen').hidden = true;
+  document.getElementById('mainPage').hidden = false;
+}
+
+async function loadAnalytics() {
+  const errEl = document.getElementById('analyticsError');
+  errEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+
+  const preset = document.getElementById('analyticsPreset').value;
+  let range;
+  if (preset === 'custom') {
+    const from = document.getElementById('analyticsFrom').value;
+    const to = document.getElementById('analyticsTo').value;
+    if (!from || !to) { errEl.textContent = '開始日と終了日を入力してください'; return; }
+    range = { from, to };
+  } else {
+    range = { preset };
+  }
+
+  const btn = document.getElementById('analyticsRefreshBtn');
+  btn.disabled = true; btn.textContent = '更新中...';
+  try {
+    const result = await gasCall('getAnalytics', { session: session.token, range });
+    document.getElementById('analyticsTotalVisits').textContent = `${result.totalVisits}件`;
+    document.getElementById('analyticsAvgRevenue').textContent = '¥' + result.avgRevenue.toLocaleString();
+
+    const regionBody = document.getElementById('analyticsByRegionBody');
+    regionBody.innerHTML = result.byRegion.map(r =>
+      `<tr><td>${escapeHtml(r.region)}</td><td style="text-align:right">${r.count}件</td></tr>`
+    ).join('') || '<tr><td>データがありません</td></tr>';
+
+    const staffBody = document.getElementById('analyticsByStaffBody');
+    staffBody.innerHTML = result.byStaff.map(s =>
+      `<tr><td>${escapeHtml(s.staff)}</td><td style="text-align:right">${s.count}件</td><td style="text-align:right">¥${s.avgRevenue.toLocaleString()}</td></tr>`
+    ).join('') || '<tr><td>データがありません</td></tr>';
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '更新';
   }
 }
 
