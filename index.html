@@ -113,9 +113,16 @@
   .user-bar .btn-logout { background:none; border:1px solid rgba(255,255,255,.5); color:#fff; border-radius:3px; padding:3px 10px; font-size:11px; cursor:pointer; }
   .user-bar .btn-logout:hover { background:rgba(255,255,255,.15); }
   /* admin */
+  .admin-tabs { display:flex; gap:2px; padding:10px 20px 0; background:var(--gray-light); border-bottom:1px solid var(--border); }
+  .admin-tab-btn { background:none; border:none; border-bottom:3px solid transparent; padding:10px 16px; font-size:13px; font-weight:600; color:var(--gray); cursor:pointer; }
+  .admin-tab-btn.active { color:var(--blue); border-bottom-color:var(--blue); }
   .admin-table input { border:1px solid var(--border); border-radius:3px; padding:5px 7px; font-size:12px; font-family:inherit; width:100%; }
   .admin-table input[type="checkbox"] { width:auto; }
+  .admin-table select { border:1px solid var(--border); border-radius:3px; padding:5px 7px; font-size:12px; font-family:inherit; width:100%; }
   .admin-table td { padding:5px 6px; }
+  .pin-reveal-wrap { display:flex; gap:4px; align-items:center; }
+  .pin-reveal-wrap input { flex:1; }
+  .btn-pin-toggle { background:none; border:1px solid var(--border); border-radius:3px; padding:4px 8px; font-size:11px; cursor:pointer; flex-shrink:0; }
   .btn-add-row { background:none; border:1px dashed var(--blue); color:var(--blue); border-radius:3px; padding:6px 14px; font-size:12px; cursor:pointer; margin-top:10px; }
   .btn-add-row:hover { background:var(--blue-light); }
   .btn-row-delete { background:none; border:1px solid var(--red); color:var(--red); border-radius:3px; padding:3px 8px; font-size:11px; cursor:pointer; }
@@ -389,9 +396,14 @@
   </div>
   <div class="page-header">
     <h1>管理画面</h1>
-    <p>価格表の編集</p>
+    <p>価格表・スタッフの編集</p>
   </div>
-  <div class="section">
+  <div class="admin-tabs">
+    <button type="button" class="admin-tab-btn active" data-tab="price">価格表</button>
+    <button type="button" class="admin-tab-btn" data-tab="staff">スタッフ</button>
+  </div>
+
+  <div class="section admin-tab-panel" id="adminTabPrice">
     <div class="section-title">【価格表】</div>
     <table class="work-table admin-table">
       <thead>
@@ -406,6 +418,24 @@
       <p id="adminError" class="error-msg"></p>
       <p id="adminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
       <button type="button" class="btn-submit" id="savePriceListBtn" style="max-width:240px">保存する</button>
+    </div>
+  </div>
+
+  <div class="section admin-tab-panel" id="adminTabStaff" hidden>
+    <div class="section-title">【スタッフ】</div>
+    <table class="work-table admin-table">
+      <thead>
+        <tr>
+          <th>名前</th><th>メールアドレス</th><th>PIN</th><th>役割</th><th>有効</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="adminStaffTableBody"></tbody>
+    </table>
+    <button type="button" class="btn-add-row" id="addStaffRowBtn">＋ スタッフを追加</button>
+    <div class="submit-area" style="padding:16px 0 0">
+      <p id="staffAdminError" class="error-msg"></p>
+      <p id="staffAdminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
+      <button type="button" class="btn-submit" id="saveStaffBtn" style="max-width:240px">保存する</button>
     </div>
   </div>
 </div>
@@ -510,6 +540,10 @@ function openAdminScreen() {
   document.getElementById('mainPage').hidden = true;
   document.getElementById('adminScreen').hidden = false;
   document.getElementById('adminBarName').textContent = document.getElementById('userBarName').textContent;
+  // 価格表タブを既定表示にリセット
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'price'));
+  document.getElementById('adminTabPrice').hidden = false;
+  document.getElementById('adminTabStaff').hidden = true;
   loadAdminPriceList();
 }
 
@@ -583,6 +617,113 @@ async function saveAdminPriceList() {
       clearSession(); showLoginScreen();
     } else if (err.code === 'version_conflict') {
       await loadAdminPriceList(); // ここでerrEl/okElの内容は一旦クリアされる
+      errEl.textContent = err.message;
+    } else {
+      errEl.textContent = err.message;
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+// ===== 管理画面：タブ切り替え =====
+document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    const tab = btn.dataset.tab;
+    document.getElementById('adminTabPrice').hidden = tab !== 'price';
+    document.getElementById('adminTabStaff').hidden = tab !== 'staff';
+    if (tab === 'staff') loadAdminStaff();
+  });
+});
+
+// ===== 管理画面：スタッフ編集 =====
+let adminStaffBaseVersion = null;
+
+document.getElementById('addStaffRowBtn').addEventListener('click', () => {
+  document.getElementById('adminStaffTableBody').appendChild(
+    buildAdminStaffRow({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true })
+  );
+});
+document.getElementById('saveStaffBtn').addEventListener('click', saveAdminStaff);
+
+async function loadAdminStaff() {
+  const errEl = document.getElementById('staffAdminError');
+  const okEl = document.getElementById('staffAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  try {
+    const result = await gasCall('getConfig', { session: session.token, configType: 'staff' });
+    adminStaffBaseVersion = result.version;
+    const tbody = document.getElementById('adminStaffTableBody');
+    tbody.innerHTML = '';
+    result.staff.forEach(s => tbody.appendChild(buildAdminStaffRow(s)));
+  } catch (err) {
+    errEl.textContent = 'スタッフ情報の取得に失敗しました: ' + err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  }
+}
+
+function buildAdminStaffRow(s) {
+  const tr = document.createElement('tr');
+  tr.dataset.staffId = s.id;
+  tr.innerHTML = `
+    <td><input type="text" class="staff-name" value="${escapeHtml(s.name || '')}"></td>
+    <td><input type="email" class="staff-email" value="${escapeHtml(s.email || '')}"></td>
+    <td>
+      <div class="pin-reveal-wrap">
+        <input type="password" class="staff-pin" value="${escapeHtml(s.pin || '')}" maxlength="6" inputmode="numeric">
+        <button type="button" class="btn-pin-toggle">表示</button>
+      </div>
+    </td>
+    <td>
+      <select class="staff-role">
+        <option value="staff" ${s.role === 'staff' ? 'selected' : ''}>スタッフ</option>
+        <option value="admin" ${s.role === 'admin' ? 'selected' : ''}>管理者</option>
+      </select>
+    </td>
+    <td style="text-align:center"><input type="checkbox" class="staff-active" ${s.active ? 'checked' : ''}></td>
+    <td><button type="button" class="btn-row-delete">削除</button></td>`;
+  tr.querySelector('.btn-row-delete').addEventListener('click', () => tr.remove());
+  const pinInput = tr.querySelector('.staff-pin');
+  tr.querySelector('.btn-pin-toggle').addEventListener('click', e => {
+    pinInput.type = pinInput.type === 'password' ? 'text' : 'password';
+    e.target.textContent = pinInput.type === 'password' ? '表示' : '隠す';
+  });
+  return tr;
+}
+
+async function saveAdminStaff() {
+  const errEl = document.getElementById('staffAdminError');
+  const okEl = document.getElementById('staffAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+
+  const rows = [...document.querySelectorAll('#adminStaffTableBody tr')];
+  const staff = rows.map(tr => ({
+    id: tr.dataset.staffId,
+    name: tr.querySelector('.staff-name').value.trim(),
+    email: tr.querySelector('.staff-email').value.trim(),
+    pin: tr.querySelector('.staff-pin').value.trim(),
+    role: tr.querySelector('.staff-role').value,
+    active: tr.querySelector('.staff-active').checked,
+  }));
+
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('saveStaffBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    const result = await gasCall('saveConfig', {
+      session: session.token, configType: 'staff', baseVersion: adminStaffBaseVersion, staff
+    });
+    adminStaffBaseVersion = result.version;
+    okEl.textContent = '保存しました。';
+  } catch (err) {
+    if (err.code === 'session_expired') {
+      clearSession(); showLoginScreen();
+    } else if (err.code === 'version_conflict') {
+      await loadAdminStaff();
       errEl.textContent = err.message;
     } else {
       errEl.textContent = err.message;
