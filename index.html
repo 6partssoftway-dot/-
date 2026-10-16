@@ -357,15 +357,8 @@
         </label>
       </div>
       <div id="warrantyDetails" hidden>
-        <div class="field" style="margin-bottom:12px">
-          <label>お支払い方法</label>
-          <div class="radio-row">
-            <label><input type="radio" name="warrantyPlan" value="年払い" checked> 年払い</label>
-            <label><input type="radio" name="warrantyPlan" value="月払い"> 月払い（最低12ヶ月、12ヶ月経過後は月額のまま自動継続）</label>
-          </div>
-        </div>
         <div class="total-area" style="justify-content:flex-start">
-          <span>保証料金：<strong id="warrantyPriceDisp">-</strong></span>
+          <span>保証料金（年額・税抜）：<strong id="warrantyPriceDisp">-</strong></span>
         </div>
         <p style="font-size:11px;color:var(--gray);margin-top:8px">
           内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。修理不能時は当店整備品への買替¥5,000引き＋下取り。対象外：落下・水没・設置不良・明らかな誤使用。
@@ -1315,23 +1308,20 @@ cannotRepairCheckEl.addEventListener('change', () => {
 });
 
 // ===== 延長保証（料金表示・加入欄の表示切替） =====
+// 年額・税抜の単一価格（月払いは廃止）
 const WARRANTY_PRICES = {
-  '縦型':     { yearly: 5500, monthly: 500 },
-  'ドラム式': { yearly: 9680, monthly: 880 },
+  '縦型':     6000,
+  'ドラム式': 9000,
 };
 
 function updateWarrantyPriceDisplay() {
   const washType = document.querySelector('input[name="washType"]:checked')?.value;
-  const plan = document.querySelector('input[name="warrantyPlan"]:checked')?.value || '年払い';
   const priceEl = document.getElementById('warrantyPriceDisp');
   if (!washType || !WARRANTY_PRICES[washType]) {
     priceEl.textContent = '先に「種類（縦型／ドラム式）」を選択してください';
     return;
   }
-  const p = WARRANTY_PRICES[washType];
-  priceEl.textContent = plan === '月払い'
-    ? `月額¥${p.monthly.toLocaleString()}×12ヶ月（総額¥${(p.monthly * 12).toLocaleString()}）`
-    : `¥${p.yearly.toLocaleString()}（年払い）`;
+  priceEl.textContent = `¥${WARRANTY_PRICES[washType].toLocaleString()}`;
 }
 
 // 延長保証に加入する場合、その料金を「作業内容・料金一覧」にも1行追加する
@@ -1342,11 +1332,9 @@ function syncWarrantyLineItem() {
 
   if (warrantyOptInCheckEl.checked) {
     const washType = document.querySelector('input[name="washType"]:checked')?.value;
-    const plan = document.querySelector('input[name="warrantyPlan"]:checked')?.value || '年払い';
     if (washType && WARRANTY_PRICES[washType]) {
-      const p = WARRANTY_PRICES[washType];
-      const price = plan === '月払い' ? p.monthly : p.yearly;
-      const label = plan === '月払い' ? '延長保証加入（月払い・初回分）' : '延長保証加入（年払い）';
+      const price = WARRANTY_PRICES[washType];
+      const label = '延長保証加入（年額）';
 
       const tr = document.createElement('tr');
       tr.dataset.id = '__warranty__';
@@ -1368,10 +1356,6 @@ warrantyOptInCheckEl.addEventListener('change', () => {
   syncWarrantyLineItem();
 });
 document.querySelectorAll('input[name="washType"]').forEach(el => el.addEventListener('change', () => {
-  updateWarrantyPriceDisplay();
-  syncWarrantyLineItem();
-}));
-document.querySelectorAll('input[name="warrantyPlan"]').forEach(el => el.addEventListener('change', () => {
   updateWarrantyPriceDisplay();
   syncWarrantyLineItem();
 }));
@@ -1571,7 +1555,7 @@ function fillWarrantyCertTemplate(d, endDate) {
     <div>機種：${escapeHtml(d.washType || '-')}</div>
     <div>加入日：${escapeHtml(d.visitDate || '-')}</div>
     <div>保証終了日：${escapeHtml(endDate)}</div>
-    <div>お支払い方法：${escapeHtml(d.warrantyPlan || '-')}</div>
+    <div>保証料金（年額・税抜）：¥${(WARRANTY_PRICES[d.washType] || 0).toLocaleString()}</div>
   `;
   document.getElementById('wcTerms').innerHTML = `
     <strong>保証内容</strong><br>
