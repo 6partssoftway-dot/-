@@ -335,6 +335,44 @@
       </div>
     </div>
 
+    <!-- 延長保証（任意加入） -->
+    <!-- 既存の延長保証会員が保証を使って来店した場合（電話番号で会員を照合） -->
+    <div class="section" id="warrantyUsageSection">
+      <div class="section-title">【延長保証の利用（既存会員）】</div>
+      <div class="radio-row">
+        <label><input type="radio" name="warrantyUsage" value="" checked> 利用なし（通常の有償修理）</label>
+        <label><input type="radio" name="warrantyUsage" value="1回目"> 保証利用（1回目）</label>
+        <label><input type="radio" name="warrantyUsage" value="2回目"> 保証利用（2回目）</label>
+      </div>
+      <p style="font-size:11px;color:var(--gray);margin-top:8px">※ お客様情報欄の電話番号で、有効な延長保証会員を自動的に照合します。</p>
+    </div>
+
+    <div class="section" id="warrantySection">
+      <div class="section-title">【延長保証（任意加入）】</div>
+      <div class="consent-box" style="background:#f0f7ff;border-color:#a8c8e8">
+        <p>加入条件：当店で修理し動作確認済み、製造10年以内。加入は本日のみです。</p>
+        <label class="consent-item" style="border-top:none;padding-top:0">
+          <input type="checkbox" id="warrantyOptInCheck">
+          <span>◆ 有料延長保証に加入する</span>
+        </label>
+      </div>
+      <div id="warrantyDetails" hidden>
+        <div class="field" style="margin-bottom:12px">
+          <label>お支払い方法</label>
+          <div class="radio-row">
+            <label><input type="radio" name="warrantyPlan" value="年払い" checked> 年払い</label>
+            <label><input type="radio" name="warrantyPlan" value="月払い"> 月払い（最低12ヶ月、12ヶ月経過後は月額のまま自動継続）</label>
+          </div>
+        </div>
+        <div class="total-area" style="justify-content:flex-start">
+          <span>保証料金：<strong id="warrantyPriceDisp">-</strong></span>
+        </div>
+        <p style="font-size:11px;color:var(--gray);margin-top:8px">
+          内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。修理不能時は当店整備品への買替¥5,000引き＋下取り。対象外：落下・水没・設置不良・明らかな誤使用。
+        </p>
+      </div>
+    </div>
+
     <!-- お客様情報＋署名（まとめて最下部） -->
     <div class="section">
       <div class="section-title">【お客様情報・署名】</div>
@@ -529,6 +567,17 @@
   <div id="rtTotals" style="text-align:right;font-size:13px;line-height:1.8;margin-bottom:16px;"></div>
   <div id="rtSig" style="font-size:11px;color:#4a5568;"></div>
   <div id="rtIssued" style="text-align:right;font-size:10px;color:#aaa;margin-top:16px;"></div>
+</div>
+
+<!-- 延長保証書PDF用の非表示テンプレート -->
+<div id="warrantyCertTemplate" style="position:absolute;left:-9999px;top:0;width:600px;background:#fff;padding:28px;font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a202c;">
+  <div style="text-align:center;border-bottom:3px solid #1a4a8a;padding-bottom:12px;margin-bottom:16px;">
+    <div style="font-size:20px;font-weight:700;color:#1a4a8a;">延長保証書</div>
+    <div style="font-size:12px;color:#4a5568;margin-top:4px;">洗濯機修理センター</div>
+  </div>
+  <div id="wcMeta" style="font-size:13px;line-height:2;margin-bottom:16px;"></div>
+  <div id="wcTerms" style="font-size:11px;color:#4a5568;line-height:1.8;border-top:1px solid #d1d9e6;padding-top:12px;"></div>
+  <div id="wcIssued" style="text-align:right;font-size:10px;color:#aaa;margin-top:16px;"></div>
 </div>
 
 <script>
@@ -1246,6 +1295,7 @@ noEmailEl.addEventListener('change', () => {
 
 // ===== 修理不可 =====
 const cannotRepairCheckEl = document.getElementById('cannotRepairCheck');
+const warrantyOptInCheckEl = document.getElementById('warrantyOptInCheck');
 cannotRepairCheckEl.addEventListener('change', () => {
   const cannotRepair = cannotRepairCheckEl.checked;
   document.getElementById('workSection').hidden = cannotRepair;
@@ -1256,7 +1306,40 @@ cannotRepairCheckEl.addEventListener('change', () => {
     });
     calcTotal();
   }
+  // 修理不可の場合は延長保証に加入できない（加入条件：当店で修理し動作確認済み）
+  document.getElementById('warrantySection').hidden = cannotRepair;
+  if (cannotRepair) {
+    warrantyOptInCheckEl.checked = false;
+    warrantyOptInCheckEl.dispatchEvent(new Event('change'));
+  }
 });
+
+// ===== 延長保証（料金表示・加入欄の表示切替） =====
+const WARRANTY_PRICES = {
+  '縦型':     { yearly: 5500, monthly: 500 },
+  'ドラム式': { yearly: 9680, monthly: 880 },
+};
+
+function updateWarrantyPriceDisplay() {
+  const washType = document.querySelector('input[name="washType"]:checked')?.value;
+  const plan = document.querySelector('input[name="warrantyPlan"]:checked')?.value || '年払い';
+  const priceEl = document.getElementById('warrantyPriceDisp');
+  if (!washType || !WARRANTY_PRICES[washType]) {
+    priceEl.textContent = '先に「種類（縦型／ドラム式）」を選択してください';
+    return;
+  }
+  const p = WARRANTY_PRICES[washType];
+  priceEl.textContent = plan === '月払い'
+    ? `月額¥${p.monthly.toLocaleString()}×12ヶ月（総額¥${(p.monthly * 12).toLocaleString()}）`
+    : `¥${p.yearly.toLocaleString()}（年払い）`;
+}
+
+warrantyOptInCheckEl.addEventListener('change', () => {
+  document.getElementById('warrantyDetails').hidden = !warrantyOptInCheckEl.checked;
+  if (warrantyOptInCheckEl.checked) updateWarrantyPriceDisplay();
+});
+document.querySelectorAll('input[name="washType"]').forEach(el => el.addEventListener('change', updateWarrantyPriceDisplay));
+document.querySelectorAll('input[name="warrantyPlan"]').forEach(el => el.addEventListener('change', updateWarrantyPriceDisplay));
 
 function getEmailValue() {
   if (noEmailEl.checked) return '';
@@ -1320,6 +1403,9 @@ function collectData() {
     reviewOptIn: reviewOptInEl.checked,
     repairPossible: !cannotRepairCheckEl.checked,
     visitPrefecture: getVisitPrefecture(),
+    warrantyOptIn: warrantyOptInCheckEl.checked && !cannotRepairCheckEl.checked,
+    warrantyPlan: document.querySelector('input[name="warrantyPlan"]:checked')?.value || '',
+    warrantyUsage: document.querySelector('input[name="warrantyUsage"]:checked')?.value || '',
     timestamp: new Date().toLocaleString('ja-JP'),
   };
 }
@@ -1334,6 +1420,8 @@ async function sendToNotion(d) {
     name:          d.name,
     phone:         d.phone,
     address:       d.address,
+    maker:         d.maker,
+    washType:      d.washType,
     makerType:     [d.maker, d.washType].filter(Boolean).join(' '),
     repairContent: repairContent,
     subtotal:      d.subtotal,
@@ -1351,6 +1439,11 @@ async function sendToNotion(d) {
     reviewOptIn:   d.reviewOptIn,
     repairPossible: d.repairPossible,
     visitPrefecture: d.visitPrefecture,
+    warrantyOptIn: d.warrantyOptIn,
+    warrantyPlan:  d.warrantyPlan,
+    warrantyUsage: d.warrantyUsage,
+    warrantyCertBase64:   d.warrantyCertBase64 || '',
+    warrantyCertFilename: d.warrantyCertFilename || '',
     workList:      workList,
     pdfFilename:   lastReceiptFilename || '',
     pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
@@ -1431,6 +1524,51 @@ function downloadReceiptPdf() {
   lastReceiptDoc.save(lastReceiptFilename);
 }
 
+// ===== 延長保証書PDF（加入した場合のみ生成） =====
+function computeWarrantyEndDateDisplay() {
+  return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function fillWarrantyCertTemplate(d, endDate) {
+  document.getElementById('wcMeta').innerHTML = `
+    <div>お客様名：${escapeHtml(d.name)} 様</div>
+    <div>機種：${escapeHtml(d.washType || '-')}</div>
+    <div>加入日：${escapeHtml(d.visitDate || '-')}</div>
+    <div>保証終了日：${escapeHtml(endDate)}</div>
+    <div>お支払い方法：${escapeHtml(d.warrantyPlan || '-')}</div>
+  `;
+  document.getElementById('wcTerms').innerHTML = `
+    <strong>保証内容</strong><br>
+    ・修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引）<br>
+    ・年2回まで、1回あたり2万円相当まで<br>
+    ・修理不能時は当店整備品への買替を¥5,000引き＋下取り<br>
+    <br>
+    <strong>対象外</strong><br>
+    落下・水没・設置不良・明らかな誤使用による故障
+  `;
+  document.getElementById('wcIssued').textContent = '発行日時：' + d.timestamp;
+}
+
+async function generateWarrantyCertPDF(d, endDate) {
+  fillWarrantyCertTemplate(d, endDate);
+  const el = document.getElementById('warrantyCertTemplate');
+  const canvasImg = await html2canvas(el, { scale: 1.5, backgroundColor: '#ffffff' });
+  const imgData = canvasImg.toDataURL('image/jpeg', 0.85);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  let w = pageWidth - 20;
+  let h = canvasImg.height * w / canvasImg.width;
+  if (h > pageHeight - 20) {
+    h = pageHeight - 20;
+    w = canvasImg.width * h / canvasImg.height;
+  }
+  const x = (pageWidth - w) / 2;
+  pdf.addImage(imgData, 'JPEG', x, 10, w, h);
+  return pdf;
+}
+
 // ===== SUBMIT =====
 document.getElementById('repairForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -1453,14 +1591,23 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   const btn = document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='送信中...';
 
-  let notionOk = false, emailOk = false, notionErr = '', emailErr = '', pdfOk = false;
+  let notionOk = false, emailOk = false, notionErr = '', emailErr = '', pdfOk = false, warrantyResult = null, warrantyUsageResult = null;
 
   try { await buildAndStoreReceipt(data); pdfOk = true; } catch(err) { console.warn('PDF生成失敗:', err); }
+  if (data.warrantyOptIn) {
+    try {
+      const certPdf = await generateWarrantyCertPDF(data, computeWarrantyEndDateDisplay());
+      data.warrantyCertBase64 = certPdf.output('datauristring').split(',')[1] || '';
+      data.warrantyCertFilename = `保証書_${data.name || 'お客様'}.pdf`;
+    } catch (err) { console.warn('保証書PDF生成失敗:', err); }
+  }
   try {
     const result = await sendToNotion(data);
     notionOk = true;
     emailOk = !!result.emailSent;
     emailErr = result.emailError || '';
+    warrantyResult = result.warranty || null;
+    warrantyUsageResult = result.warrantyUsage || null;
   } catch(err) {
     notionErr = err.message;
     if (err.code === 'session_expired') {
@@ -1484,6 +1631,22 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     } else {
       msgEl.textContent = 'メール送信に失敗しました。お手数ですが「領収書PDFをダウンロード」から保存してお客様にお渡しください。';
       console.warn('メール送信失敗:', emailErr);
+    }
+    if (data.warrantyOptIn) {
+      if (warrantyResult && warrantyResult.created) {
+        msgEl.textContent += '延長保証にもご加入いただきました。保証書を' + (warrantyResult.emailSent ? 'メールでお送りしました。' : 'メールでお送りできなかったため、別途お渡しください。');
+      } else {
+        msgEl.textContent += '延長保証の登録に失敗しました。お手数ですが担当者にご確認ください（' + ((warrantyResult && warrantyResult.error) || '') + '）。';
+      }
+    }
+    if (data.warrantyUsage) {
+      if (warrantyUsageResult && warrantyUsageResult.ok) {
+        msgEl.textContent += '延長保証の利用（' + data.warrantyUsage + '）を記録しました。';
+      } else if (warrantyUsageResult && warrantyUsageResult.reason === 'member_not_found') {
+        msgEl.textContent += '延長保証会員が見つからなかったため、利用記録はできませんでした。電話番号をご確認ください。';
+      } else {
+        msgEl.textContent += '延長保証の利用記録に失敗しました。お手数ですが担当者にご確認ください。';
+      }
     }
   } else {
     errEl.textContent='送信に失敗しました。担当者にお声がけください。（'+notionErr+')';
