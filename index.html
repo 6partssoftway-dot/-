@@ -209,6 +209,10 @@
             口コミ投稿のお願いメールを送ってもよい（領収書メールの30分後に送信）
           </label>
         </div>
+        <div class="field" id="visitPrefectureWrap" hidden>
+          <label>訪問先の都道府県 <span class="req">*</span></label>
+          <select id="visitPrefecture"></select>
+        </div>
         <div class="field">
           <label>メーカー・機種名</label>
           <input type="text" id="maker" placeholder="例：Panasonic NA-VX9900L">
@@ -584,6 +588,29 @@ function showMainScreen(session) {
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
   loadPriceListFromServer(session.token);
   loadOrderSourcesFromServer(session.token);
+  setupVisitPrefectureField(session);
+}
+
+// 担当都道府県が2つ以上のスタッフだけ、案件ごとに訪問先を選ばせる（1つだけの場合は自動設定・非表示）
+function setupVisitPrefectureField(session) {
+  const wrap = document.getElementById('visitPrefectureWrap');
+  const sel = document.getElementById('visitPrefecture');
+  const prefs = session.prefectures || [];
+  if (prefs.length >= 2) {
+    sel.innerHTML = '<option value="">選択してください</option>' + prefs.map(p => `<option>${escapeHtml(p)}</option>`).join('');
+    wrap.hidden = false;
+  } else {
+    wrap.hidden = true;
+    sel.innerHTML = '';
+  }
+}
+
+function getVisitPrefecture() {
+  const session = getSession();
+  const prefs = (session && session.prefectures) || [];
+  if (prefs.length === 1) return prefs[0];
+  if (prefs.length >= 2) return document.getElementById('visitPrefecture').value;
+  return '';
 }
 
 // サーバー側の価格表を取得して置き換える。取得できなければ、アプリ内蔵のデフォルト価格表（ITEMSの初期値）のまま動かす
@@ -1061,7 +1088,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   try {
     const result = await gasCall('login', { email, pin });
     const expiresAt = Date.now() + 12 * 60 * 60 * 1000; // 12時間
-    const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, expiresAt };
+    const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, prefectures: result.prefectures || [], expiresAt };
     saveSession(session);
     document.getElementById('pinInput').value = '';
     showMainScreen(session);
@@ -1287,6 +1314,7 @@ function collectData() {
     netAmount: calcNetAmount(payment, total),
     reviewOptIn: reviewOptInEl.checked,
     repairPossible: !cannotRepairCheckEl.checked,
+    visitPrefecture: getVisitPrefecture(),
     timestamp: new Date().toLocaleString('ja-JP'),
   };
 }
@@ -1317,6 +1345,7 @@ async function sendToNotion(d) {
     email:         d.email,
     reviewOptIn:   d.reviewOptIn,
     repairPossible: d.repairPossible,
+    visitPrefecture: d.visitPrefecture,
     workList:      workList,
     pdfFilename:   lastReceiptFilename || '',
     pdfBase64:     lastReceiptDoc ? lastReceiptDoc.output('datauristring').split(',')[1] || '' : '',
@@ -1407,6 +1436,11 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   const noEmail = noEmailEl.checked;
   if (!noEmail && !getEmailValue()) {
     errEl.textContent = 'メールアドレスを入力するか、「メールアドレスをお持ちでない」にチェックしてください。';
+    return;
+  }
+
+  if (!document.getElementById('visitPrefectureWrap').hidden && !getVisitPrefecture()) {
+    errEl.textContent = '訪問先の都道府県を選択してください。';
     return;
   }
 
