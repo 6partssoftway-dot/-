@@ -1334,12 +1334,47 @@ function updateWarrantyPriceDisplay() {
     : `¥${p.yearly.toLocaleString()}（年払い）`;
 }
 
+// 延長保証に加入する場合、その料金を「作業内容・料金一覧」にも1行追加する
+// （お客様が最終的な合計金額を一目で把握できるようにするため。Notionへの記帳もこの1行の合計に含まれる）
+function syncWarrantyLineItem() {
+  const existingRow = document.querySelector('#workTableBody tr[data-id="__warranty__"]');
+  if (existingRow) existingRow.remove();
+
+  if (warrantyOptInCheckEl.checked) {
+    const washType = document.querySelector('input[name="washType"]:checked')?.value;
+    const plan = document.querySelector('input[name="warrantyPlan"]:checked')?.value || '年払い';
+    if (washType && WARRANTY_PRICES[washType]) {
+      const p = WARRANTY_PRICES[washType];
+      const price = plan === '月払い' ? p.monthly : p.yearly;
+      const label = plan === '月払い' ? '延長保証加入（月払い・初回分）' : '延長保証加入（年払い）';
+
+      const tr = document.createElement('tr');
+      tr.dataset.id = '__warranty__';
+      tr.classList.add('selected');
+      tr.innerHTML = `
+        <td class="check-cell"><input type="checkbox" class="item-check" data-id="__warranty__" data-price="${price}" data-discount="false" data-label="${escapeHtml(label)}" checked disabled></td>
+        <td>${escapeHtml(label)}</td>
+        <td><span style="font-size:11px;color:var(--gray)">延長保証欄で設定</span></td>
+        <td><span>${price.toLocaleString()}円</span></td>`;
+      document.getElementById('workTableBody').appendChild(tr);
+    }
+  }
+  calcTotal();
+}
+
 warrantyOptInCheckEl.addEventListener('change', () => {
   document.getElementById('warrantyDetails').hidden = !warrantyOptInCheckEl.checked;
   if (warrantyOptInCheckEl.checked) updateWarrantyPriceDisplay();
+  syncWarrantyLineItem();
 });
-document.querySelectorAll('input[name="washType"]').forEach(el => el.addEventListener('change', updateWarrantyPriceDisplay));
-document.querySelectorAll('input[name="warrantyPlan"]').forEach(el => el.addEventListener('change', updateWarrantyPriceDisplay));
+document.querySelectorAll('input[name="washType"]').forEach(el => el.addEventListener('change', () => {
+  updateWarrantyPriceDisplay();
+  syncWarrantyLineItem();
+}));
+document.querySelectorAll('input[name="warrantyPlan"]').forEach(el => el.addEventListener('change', () => {
+  updateWarrantyPriceDisplay();
+  syncWarrantyLineItem();
+}));
 
 function getEmailValue() {
   if (noEmailEl.checked) return '';
@@ -1367,14 +1402,15 @@ function collectData() {
   let subtotal = 0;
   document.querySelectorAll('.item-check:checked').forEach(cb => {
     const id = cb.dataset.id;
-    const item = ITEMS.find(i=>i.id===id);
+    // 延長保証の料金行はITEMSに存在しない特別な行なので、ラベルはdata属性から直接取る
+    const label = id === '__warranty__' ? cb.dataset.label : ITEMS.find(i=>i.id===id)?.label;
     const note = document.querySelector(`.notes-input[data-id="${id}"]`)?.value||'';
     const custom = document.querySelector(`.custom-price[data-id="${id}"]`);
     const isDiscount = cb.dataset.discount==='true';
     let price = custom ? parseInt(custom.value||0) : parseInt(cb.dataset.price);
     if (isDiscount) price = -Math.abs(price);
     subtotal += price;
-    workItems.push({name:item.label, note, price});
+    workItems.push({name:label, note, price});
   });
   const tax = Math.round(subtotal * 0.1);
   const total = subtotal + tax;
