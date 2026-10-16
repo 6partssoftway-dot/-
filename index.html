@@ -512,7 +512,7 @@
       <table class="work-table"><tbody id="analyticsByRegionBody"></tbody></table>
     </div>
     <div style="margin-top:20px">
-      <div class="section-title">担当者別 件数・平均売上</div>
+      <div class="section-title">担当者別 件数・合計売上・平均売上</div>
       <table class="work-table"><tbody id="analyticsByStaffBody"></tbody></table>
     </div>
   </div>
@@ -1066,8 +1066,13 @@ async function loadAnalytics() {
     ).join('') || '<tr><td>データがありません</td></tr>';
 
     const staffBody = document.getElementById('analyticsByStaffBody');
-    staffBody.innerHTML = result.byStaff.map(s =>
-      `<tr><td>${escapeHtml(s.staff)}</td><td style="text-align:right">${s.count}件</td><td style="text-align:right">¥${s.avgRevenue.toLocaleString()}</td></tr>`
+    staffBody.innerHTML = result.byStaff.map(s => `
+      <tr>
+        <td>${escapeHtml(s.staff)}</td>
+        <td style="text-align:right">${s.count}件</td>
+        <td style="text-align:right">合計 ¥${s.totalRevenue.toLocaleString()}</td>
+        <td style="text-align:right">平均 ¥${s.avgRevenue.toLocaleString()}</td>
+      </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
   } catch (err) {
     errEl.textContent = err.message;
