@@ -311,30 +311,6 @@
       </div>
     </div>
 
-    <!-- 同意事項 -->
-    <div class="section">
-      <div class="section-title">【同意事項】</div>
-      <div class="consent-box">
-        <p>以下の4項目をお読みの上、それぞれチェックをお願いします。</p>
-        <label class="consent-item">
-          <input type="checkbox" id="consent1" required>
-          <span>◆ 修理作業は、洗濯機の使用状況・年式・症状に応じた応急的または部分的な対応であり、<strong>恒久的な修復や動作保証を目的とするものではない</strong>ことを了承しました。</span>
-        </label>
-        <label class="consent-item">
-          <input type="checkbox" id="consent2" required>
-          <span>◆ 使用年数の経過・部品の劣化・構造上の問題に起因して、作業後に再発や別の不具合が生じる可能性があり、<strong>これらに関する損害等について当社は責任を負いかねる</strong>ことを理解しました。</span>
-        </label>
-        <label class="consent-item">
-          <input type="checkbox" id="consent3" required>
-          <span>◆ 本サービスはお客様の明確なご依頼に基づく訪問・作業であり、<strong>特定商取引法の訪問販売には該当せず、クーリング・オフ制度の適用対象外</strong>であることを確認しました。</span>
-        </label>
-        <label class="consent-item">
-          <input type="checkbox" id="consent4" required>
-          <span>◆ 修理によって症状が改善されても、使用環境・機種特性によって持続性に差が生じる可能性があり、<strong>新品同様の性能回復を保証するものではない</strong>ことを理解しました。</span>
-        </label>
-      </div>
-    </div>
-
     <!-- 延長保証（任意加入） -->
     <!-- 既存の延長保証会員が保証を使って来店した場合（電話番号で会員を照合） -->
     <div class="section" id="warrantyUsageSection">
@@ -361,8 +337,32 @@
           <span>保証料金（年額・税抜）：<strong id="warrantyPriceDisp">-</strong></span>
         </div>
         <p style="font-size:11px;color:var(--gray);margin-top:8px">
-          内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。修理不能時は当店整備品への買替¥5,000引き＋下取り。対象外：落下・水没・設置不良・明らかな誤使用。
+          内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。クリーニング（洗濯槽・乾燥経路）は対象外。買替・下取りは対象外。修理不可と判断された故障は対応できず、その場合の返金もございません。対象外：落下・水没・設置不良・明らかな誤使用。
         </p>
+      </div>
+    </div>
+
+    <!-- 同意事項 -->
+    <div class="section">
+      <div class="section-title">【同意事項】</div>
+      <div class="consent-box">
+        <p>以下の4項目をお読みの上、それぞれチェックをお願いします。</p>
+        <label class="consent-item">
+          <input type="checkbox" id="consent1" required>
+          <span>◆ 修理作業は、洗濯機の使用状況・年式・症状に応じた応急的または部分的な対応であり、<strong>恒久的な修復や動作保証を目的とするものではない</strong>ことを了承しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent2" required>
+          <span>◆ 使用年数の経過・部品の劣化・構造上の問題に起因して、作業後に再発や別の不具合が生じる可能性があり、<strong>これらに関する損害等について当社は責任を負いかねる</strong>ことを理解しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent3" required>
+          <span>◆ 本サービスはお客様の明確なご依頼に基づく訪問・作業であり、<strong>特定商取引法の訪問販売には該当せず、クーリング・オフ制度の適用対象外</strong>であることを確認しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent4" required>
+          <span>◆ 修理によって症状が改善されても、使用環境・機種特性によって持続性に差が生じる可能性があり、<strong>新品同様の性能回復を保証するものではない</strong>ことを理解しました。</span>
+        </label>
       </div>
     </div>
 
@@ -458,6 +458,8 @@
     <button type="button" class="admin-tab-btn active" data-tab="price">価格表</button>
     <button type="button" class="admin-tab-btn" data-tab="staff">スタッフ</button>
     <button type="button" class="admin-tab-btn" data-tab="orderSources">受注元</button>
+    <button type="button" class="admin-tab-btn" data-tab="commission">歩合設定</button>
+    <button type="button" class="admin-tab-btn" data-tab="settlement">週次決算</button>
   </div>
 
   <div class="section admin-tab-panel" id="adminTabPrice">
@@ -498,6 +500,33 @@
       <p id="orderSourceAdminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
       <button type="button" class="btn-submit" id="saveOrderSourcesBtn" style="max-width:240px">保存する</button>
     </div>
+  </div>
+
+  <div class="section admin-tab-panel" id="adminTabCommission" hidden>
+    <div class="section-title">【歩合設定】</div>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:10px">管理者以外の担当者について、入社以来の累計件数（修理不可を除く）に応じた粗利の歩合率を設定します。しきい値は小さい順に、最後の段階だけ「上限なし」にしてください。</p>
+    <div id="adminCommissionList"></div>
+    <button type="button" class="btn-add-row" id="addCommissionRowBtn">＋ 段階を追加</button>
+    <div class="submit-area" style="padding:16px 0 0">
+      <p id="commissionAdminError" class="error-msg"></p>
+      <p id="commissionAdminSuccess" style="color:var(--green);font-size:12px;margin-bottom:8px"></p>
+      <button type="button" class="btn-submit" id="saveCommissionBtn" style="max-width:240px">保存する</button>
+    </div>
+  </div>
+
+  <div class="section admin-tab-panel" id="adminTabSettlement" hidden>
+    <div class="section-title">【週次決算】</div>
+    <p style="font-size:12px;color:var(--gray);margin-bottom:10px">火曜〜月曜締めで、管理者以外の担当者ごとの週間売上・歩合給・会社の利益・相殺額を確認できます。</p>
+    <div class="grid-2" style="align-items:end;margin-bottom:12px">
+      <div class="field">
+        <label>週に含まれる日付</label>
+        <input type="date" id="settlementDate">
+      </div>
+    </div>
+    <button type="button" class="btn-add-row" id="settlementRefreshBtn">表示</button>
+    <p id="settlementError" class="error-msg" style="margin-top:10px"></p>
+    <p id="settlementRangeNote" style="font-size:12px;color:var(--gray);margin-top:10px"></p>
+    <div id="settlementList" style="margin-top:14px"></div>
   </div>
 </div>
 
@@ -781,17 +810,27 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     document.getElementById('adminTabPrice').hidden = tab !== 'price';
     document.getElementById('adminTabStaff').hidden = tab !== 'staff';
     document.getElementById('adminTabOrderSources').hidden = tab !== 'orderSources';
+    document.getElementById('adminTabCommission').hidden = tab !== 'commission';
+    document.getElementById('adminTabSettlement').hidden = tab !== 'settlement';
     if (tab === 'staff') loadAdminStaff();
     if (tab === 'orderSources') loadAdminOrderSources();
+    if (tab === 'commission') loadAdminCommissionTiers();
+    if (tab === 'settlement') {
+      if (!document.getElementById('settlementDate').value) {
+        document.getElementById('settlementDate').value = new Date().toISOString().slice(0, 10);
+      }
+      loadWeeklySettlement();
+    }
   });
 });
 
 // ===== 管理画面：スタッフ編集（カード形式） =====
 let adminStaffBaseVersion = null;
+let pendingLineUsersCache = [];
 
 document.getElementById('addStaffRowBtn').addEventListener('click', () => {
   document.getElementById('adminStaffList').appendChild(
-    buildAdminStaffCard({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true, prefectures: [] })
+    buildAdminStaffCard({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true, prefectures: [], lineUserId: '' })
   );
 });
 document.getElementById('saveStaffBtn').addEventListener('click', saveAdminStaff);
@@ -805,6 +844,10 @@ async function loadAdminStaff() {
   try {
     const result = await gasCall('getConfig', { session: session.token, configType: 'staff' });
     adminStaffBaseVersion = result.version;
+    try {
+      const pending = await gasCall('getConfig', { session: session.token, configType: 'pendingLineUsers' });
+      pendingLineUsersCache = pending.items || [];
+    } catch (e) { pendingLineUsersCache = []; }
     const list = document.getElementById('adminStaffList');
     list.innerHTML = '';
     result.staff.forEach(s => list.appendChild(buildAdminStaffCard(s)));
@@ -868,6 +911,20 @@ function buildAdminStaffCard(s) {
           <button type="button" class="pref-add-btn">追加</button>
         </div>
       </div>
+      <div class="staff-field">
+        <label>LINE連携（週次報告の送信先）</label>
+        ${s.lineUserId ? `
+          <div class="no-email-check" style="margin-top:6px">
+            <span>連携済み（${escapeHtml(s.lineUserId)}）</span>
+            <button type="button" class="btn-line-unlink" style="margin-left:8px">連携解除</button>
+          </div>
+        ` : `
+          <select class="staff-line-pending">
+            <option value="">未連携（LINEで一度メッセージを送ってもらうと一覧に出ます）</option>
+            ${pendingLineUsersCache.map(u => `<option value="${escapeHtml(u.userId)}">${escapeHtml(u.displayName)}</option>`).join('')}
+          </select>
+        `}
+      </div>
     </div>
     <div class="staff-card-footer">
       <button type="button" class="btn-row-delete" ${isSelf ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>このスタッフを削除</button>
@@ -906,6 +963,17 @@ function buildAdminStaffCard(s) {
   });
   card._getPrefectures = () => prefectures;
 
+  // LINE連携：連携済みなら現在値を保持。解除ボタンで未連携に戻す（保存で確定）
+  let lineUserId = s.lineUserId || '';
+  card._getLineUserId = () => lineUserId;
+  const unlinkBtn = card.querySelector('.btn-line-unlink');
+  if (unlinkBtn) {
+    unlinkBtn.addEventListener('click', () => {
+      lineUserId = '';
+      card.replaceWith(buildAdminStaffCard(Object.assign({}, s, { lineUserId: '' })));
+    });
+  }
+
   // 削除（自分自身は不可。確認ダイアログあり）
   if (!isSelf) {
     card.querySelector('.btn-row-delete').addEventListener('click', () => {
@@ -930,15 +998,20 @@ async function saveAdminStaff() {
   errEl.textContent = ''; okEl.textContent = '';
 
   const cards = [...document.querySelectorAll('#adminStaffList .staff-card')];
-  const staff = cards.map(card => ({
-    id: card.dataset.staffId,
-    name: card.querySelector('.staff-name').value.trim(),
-    email: card.querySelector('.staff-email').value.trim(),
-    pin: card.querySelector('.staff-pin').value.trim(),
-    role: card.querySelector('.staff-role').value,
-    active: card.querySelector('.staff-active').checked,
-    prefectures: card._getPrefectures(),
-  }));
+  const staff = cards.map(card => {
+    const pendingSelect = card.querySelector('.staff-line-pending');
+    const lineUserId = pendingSelect ? pendingSelect.value : card._getLineUserId();
+    return {
+      id: card.dataset.staffId,
+      name: card.querySelector('.staff-name').value.trim(),
+      email: card.querySelector('.staff-email').value.trim(),
+      pin: card.querySelector('.staff-pin').value.trim(),
+      role: card.querySelector('.staff-role').value,
+      active: card.querySelector('.staff-active').checked,
+      prefectures: card._getPrefectures(),
+      lineUserId,
+    };
+  });
 
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
@@ -949,6 +1022,7 @@ async function saveAdminStaff() {
       session: session.token, configType: 'staff', baseVersion: adminStaffBaseVersion, staff
     });
     adminStaffBaseVersion = result.version;
+    await loadAdminStaff();
     okEl.textContent = '保存しました。';
   } catch (err) {
     if (err.code === 'session_expired') {
@@ -1036,6 +1110,173 @@ async function saveAdminOrderSources() {
   } finally {
     btn.disabled = false; btn.textContent = '保存する';
   }
+}
+
+// ===== 管理画面：歩合設定 =====
+let adminCommissionBaseVersion = null;
+
+document.getElementById('addCommissionRowBtn').addEventListener('click', () => {
+  document.getElementById('adminCommissionList').appendChild(buildCommissionTierRow({ upTo: null, rate: 0.5 }));
+});
+document.getElementById('saveCommissionBtn').addEventListener('click', saveAdminCommissionTiers);
+
+async function loadAdminCommissionTiers() {
+  const errEl = document.getElementById('commissionAdminError');
+  const okEl = document.getElementById('commissionAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  try {
+    const result = await gasCall('getConfig', { session: session.token, configType: 'commissionTiers' });
+    adminCommissionBaseVersion = result.version;
+    const list = document.getElementById('adminCommissionList');
+    list.innerHTML = '';
+    result.tiers.forEach(t => list.appendChild(buildCommissionTierRow(t)));
+  } catch (err) {
+    errEl.textContent = '歩合設定の取得に失敗しました: ' + err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  }
+}
+
+function buildCommissionTierRow(tier) {
+  const row = document.createElement('div');
+  row.className = 'order-source-row';
+  const isUnlimited = tier.upTo === null || tier.upTo === undefined;
+  row.innerHTML = `
+    <label style="font-size:12px;white-space:nowrap">
+      <input type="checkbox" class="commission-unlimited" ${isUnlimited ? 'checked' : ''}> 上限なし
+    </label>
+    <input type="number" class="commission-upto" min="1" step="1" value="${isUnlimited ? '' : tier.upTo}" placeholder="件数しきい値" ${isUnlimited ? 'disabled' : ''} style="width:110px">
+    <span style="font-size:12px">件目まで　率:</span>
+    <input type="number" class="commission-rate" min="0" max="100" step="1" value="${Math.round((tier.rate || 0) * 100)}" style="width:80px">%
+    <button type="button" class="btn-row-delete">削除</button>`;
+  row.querySelector('.commission-unlimited').addEventListener('change', e => {
+    row.querySelector('.commission-upto').disabled = e.target.checked;
+  });
+  row.querySelector('.btn-row-delete').addEventListener('click', () => {
+    if (confirm('この段階を削除します。よろしいですか？')) row.remove();
+  });
+  return row;
+}
+
+async function saveAdminCommissionTiers() {
+  const errEl = document.getElementById('commissionAdminError');
+  const okEl = document.getElementById('commissionAdminSuccess');
+  errEl.textContent = ''; okEl.textContent = '';
+
+  const tiers = [...document.querySelectorAll('#adminCommissionList .order-source-row')].map(row => {
+    const unlimited = row.querySelector('.commission-unlimited').checked;
+    const upToVal = row.querySelector('.commission-upto').value;
+    const rateVal = row.querySelector('.commission-rate').value;
+    return {
+      upTo: unlimited ? null : parseInt(upToVal || '0', 10),
+      rate: parseInt(rateVal || '0', 10) / 100
+    };
+  });
+
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('saveCommissionBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    const result = await gasCall('saveConfig', {
+      session: session.token, configType: 'commissionTiers', baseVersion: adminCommissionBaseVersion, tiers
+    });
+    adminCommissionBaseVersion = result.version;
+    okEl.textContent = '保存しました。';
+  } catch (err) {
+    if (err.code === 'session_expired') {
+      clearSession(); showLoginScreen();
+    } else if (err.code === 'version_conflict') {
+      await loadAdminCommissionTiers();
+      errEl.textContent = err.message;
+    } else {
+      errEl.textContent = err.message;
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+// ===== 管理画面：週次決算 =====
+document.getElementById('settlementRefreshBtn').addEventListener('click', loadWeeklySettlement);
+
+async function loadWeeklySettlement() {
+  const errEl = document.getElementById('settlementError');
+  const noteEl = document.getElementById('settlementRangeNote');
+  const listEl = document.getElementById('settlementList');
+  errEl.textContent = ''; noteEl.textContent = ''; listEl.innerHTML = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const date = document.getElementById('settlementDate').value || new Date().toISOString().slice(0, 10);
+
+  const btn = document.getElementById('settlementRefreshBtn');
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    const result = await gasCall('getWeeklySettlement', { session: session.token, date });
+    noteEl.textContent = `対象週：${result.from}〜${result.to}`;
+    if (!result.staff || result.staff.length === 0) {
+      listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">担当者（管理者以外）が登録されていません。</p>';
+      return;
+    }
+    listEl.innerHTML = result.staff.map(renderSettlementCard).join('');
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '表示';
+  }
+}
+
+function renderSettlementCard(r) {
+  if (r.incomplete) {
+    const missing = (r.missingJobs || []).map(j =>
+      `<li>${escapeHtml(j.visitDate || '日付不明')}　${escapeHtml(j.customerName || '（名前未記録）')}</li>`
+    ).join('');
+    return `
+      <div class="staff-card">
+        <div class="staff-card-header"><strong>${escapeHtml(r.staffName)}</strong></div>
+        <p style="color:#c0392b;font-size:13px;margin:8px 0">⚠ 仕入れ未記入のため今週は未集計です。以下の案件のNotion「仕入れ」を入力してください。</p>
+        <ul style="font-size:12px;margin:0 0 0 18px">${missing}</ul>
+      </div>`;
+  }
+  if (!r.detail || r.detail.length === 0) {
+    return `
+      <div class="staff-card">
+        <div class="staff-card-header"><strong>${escapeHtml(r.staffName)}</strong></div>
+        <p style="font-size:13px;color:var(--gray);margin:8px 0">今週の案件はありません。</p>
+      </div>`;
+  }
+  const rows = r.detail.map(d => `
+    <tr>
+      <td>${escapeHtml(d.visitDate || '-')}</td>
+      <td>${escapeHtml(d.customerName || '-')}</td>
+      <td>${escapeHtml(d.region || '-')}</td>
+      <td>${escapeHtml(d.content || '-')}</td>
+      <td style="text-align:right">¥${d.revenue.toLocaleString()}</td>
+      <td style="text-align:right">¥${d.cost.toLocaleString()}</td>
+      <td style="text-align:right">¥${d.grossProfit.toLocaleString()}</td>
+      <td style="text-align:right">¥${d.commission.toLocaleString()}</td>
+    </tr>`).join('');
+  const dirText = r.settlement.direction === 'owner_to_staff'
+    ? `オーナー → 担当者　¥${r.settlement.amount.toLocaleString()}`
+    : r.settlement.direction === 'staff_to_owner'
+      ? `担当者 → オーナー　¥${r.settlement.amount.toLocaleString()}`
+      : 'やり取りなし';
+  return `
+    <div class="staff-card">
+      <div class="staff-card-header"><strong>${escapeHtml(r.staffName)}</strong></div>
+      <div class="total-area" style="flex-direction:column;align-items:flex-start;gap:4px;margin:8px 0">
+        <span>週間売上：<strong>¥${r.weekRevenue.toLocaleString()}</strong></span>
+        <span>歩合給：<strong>¥${r.weekCommission.toLocaleString()}</strong></span>
+        <span>会社の利益：<strong>¥${r.companyProfit.toLocaleString()}</strong></span>
+        <span>相殺：<strong>${dirText}</strong></span>
+      </div>
+      <table class="work-table" style="font-size:12px">
+        <thead><tr><th>日付</th><th>客名前</th><th>地域</th><th>作業内容</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // 修理フォームの「受注元」プルダウンをサーバー設定で更新（取得できなければHTML内蔵の既定値のまま）
