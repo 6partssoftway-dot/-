@@ -567,13 +567,23 @@
       <span class="total">平均売上: <strong id="analyticsAvgRevenue">-</strong></span>
     </div>
 
-    <div style="margin-top:20px">
-      <div class="section-title">地域別 件数</div>
-      <table class="work-table"><tbody id="analyticsByRegionBody"></tbody></table>
+    <div style="margin-top:20px" id="analyticsRegionSection" hidden>
+      <div class="section-title">地域別 件数・売上・利益</div>
+      <table class="work-table" style="font-size:12px">
+        <thead><tr><th>地域</th><th>件数</th><th>売上</th><th>経費</th><th>人件費</th><th>利益</th><th>利益率</th></tr></thead>
+        <tbody id="analyticsByRegionBody"></tbody>
+      </table>
     </div>
     <div style="margin-top:20px">
-      <div class="section-title">担当者別 件数・合計売上・平均売上</div>
+      <div class="section-title">担当者別 合計売上・平均売上</div>
       <table class="work-table"><tbody id="analyticsByStaffBody"></tbody></table>
+    </div>
+    <div style="margin-top:20px">
+      <div class="section-title">案件明細</div>
+      <table class="work-table" style="font-size:12px">
+        <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
+        <tbody id="analyticsDetailBody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -1256,6 +1266,7 @@ function renderSettlementCard(r) {
       <td style="text-align:right">¥${d.revenue.toLocaleString()}</td>
       <td style="text-align:right">¥${d.cost.toLocaleString()}</td>
       <td style="text-align:right">¥${d.grossProfit.toLocaleString()}</td>
+      <td style="text-align:right">${Math.round(d.rate * 100)}%（${d.rank}件目）</td>
       <td style="text-align:right">¥${d.commission.toLocaleString()}</td>
     </tr>`).join('');
   const dirText = r.settlement.direction === 'owner_to_staff'
@@ -1273,7 +1284,7 @@ function renderSettlementCard(r) {
         <span>相殺：<strong>${dirText}</strong></span>
       </div>
       <table class="work-table" style="font-size:12px">
-        <thead><tr><th>日付</th><th>客名前</th><th>地域</th><th>作業内容</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
+        <thead><tr><th>日付</th><th>客名前</th><th>地域</th><th>作業内容</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合率</th><th>歩合給</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1343,18 +1354,48 @@ async function loadAnalytics() {
     document.getElementById('analyticsTotalVisits').textContent = `${result.totalVisits}件`;
     document.getElementById('analyticsAvgRevenue').textContent = '¥' + result.avgRevenue.toLocaleString();
 
-    const regionBody = document.getElementById('analyticsByRegionBody');
-    regionBody.innerHTML = result.byRegion.map(r =>
-      `<tr><td>${escapeHtml(r.region)}</td><td style="text-align:right">${r.count}件</td></tr>`
-    ).join('') || '<tr><td>データがありません</td></tr>';
+    const regionSection = document.getElementById('analyticsRegionSection');
+    if (result.byRegion) {
+      regionSection.hidden = false;
+      const regionBody = document.getElementById('analyticsByRegionBody');
+      regionBody.innerHTML = result.byRegion.map(r => `
+        <tr>
+          <td>${escapeHtml(r.region)}</td>
+          <td style="text-align:right">${r.count}件</td>
+          <td style="text-align:right">¥${r.revenue.toLocaleString()}</td>
+          <td style="text-align:right">¥${r.cost.toLocaleString()}</td>
+          <td style="text-align:right">¥${r.laborCost.toLocaleString()}</td>
+          <td style="text-align:right">¥${r.profit.toLocaleString()}</td>
+          <td style="text-align:right">${r.profitMargin}%</td>
+        </tr>`
+      ).join('') || '<tr><td>データがありません</td></tr>';
+    } else {
+      regionSection.hidden = true;
+    }
 
     const staffBody = document.getElementById('analyticsByStaffBody');
     staffBody.innerHTML = result.byStaff.map(s => `
       <tr>
         <td>${escapeHtml(s.staff)}</td>
-        <td style="text-align:right">${s.count}件</td>
+        <td>${escapeHtml(s.region || '-')}</td>
         <td style="text-align:right">合計 ¥${s.totalRevenue.toLocaleString()}</td>
         <td style="text-align:right">平均 ¥${s.avgRevenue.toLocaleString()}</td>
+      </tr>`
+    ).join('') || '<tr><td>データがありません</td></tr>';
+
+    const detailBody = document.getElementById('analyticsDetailBody');
+    detailBody.innerHTML = (result.detail || []).map(d => `
+      <tr>
+        <td>${escapeHtml(d.visitDate || '-')}</td>
+        <td>${escapeHtml(d.staffName || '-')}</td>
+        <td>${escapeHtml(d.customerName || '-')}</td>
+        <td>${escapeHtml(d.region || '-')}</td>
+        <td>${escapeHtml(d.content || '-')}</td>
+        <td>${escapeHtml(d.caseType || '-')}</td>
+        <td style="text-align:right">¥${(d.revenue || 0).toLocaleString()}</td>
+        <td style="text-align:right">${d.cost != null ? '¥' + d.cost.toLocaleString() : '-'}</td>
+        <td style="text-align:right">${d.grossProfit != null ? '¥' + d.grossProfit.toLocaleString() : '-'}</td>
+        <td style="text-align:right">${d.commission != null ? '¥' + d.commission.toLocaleString() : '-'}</td>
       </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
   } catch (err) {
@@ -1610,7 +1651,7 @@ function getEmailValue() {
   return `${local}@${domain}`;
 }
 
-// ===== NET AMOUNT（手取り自動計算）=====
+// ===== NET AMOUNT（利益自動計算）=====
 // 現金・振込：手数料なし（売上そのまま）／カード：売上から決済手数料2.5%を控除
 function calcNetAmount(payment, total) {
   if (payment === 'カード') return Math.round(total * (1 - 0.025));
