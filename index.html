@@ -562,28 +562,32 @@
     <button type="button" class="btn-add-row" id="analyticsRefreshBtn">更新</button>
     <p id="analyticsError" class="error-msg" style="margin-top:10px"></p>
 
-    <div class="total-area" style="flex-direction:column;align-items:flex-end;gap:6px;margin-top:16px">
-      <span style="font-size:13px;color:var(--gray)">件数: <strong id="analyticsTotalVisits">-</strong></span>
-      <span class="total">平均売上: <strong id="analyticsAvgRevenue">-</strong></span>
-    </div>
-
     <div style="margin-top:20px" id="analyticsRegionSection" hidden>
       <div class="section-title">地域別 件数・売上・利益</div>
-      <table class="work-table" style="font-size:12px">
-        <thead><tr><th>地域</th><th>件数</th><th>売上</th><th>経費</th><th>人件費</th><th>利益</th><th>利益率</th></tr></thead>
-        <tbody id="analyticsByRegionBody"></tbody>
-      </table>
+      <div style="overflow-x:auto">
+        <table class="work-table" style="font-size:12px;min-width:620px">
+          <thead><tr><th>地域</th><th>件数</th><th>売上</th><th>経費</th><th>人件費</th><th>利益</th><th>利益率</th></tr></thead>
+          <tbody id="analyticsByRegionBody"></tbody>
+        </table>
+      </div>
     </div>
     <div style="margin-top:20px">
-      <div class="section-title">担当者別 合計売上・平均売上</div>
-      <table class="work-table"><tbody id="analyticsByStaffBody"></tbody></table>
+      <div class="section-title">担当者別 件数・売上・歩合給</div>
+      <div style="overflow-x:auto">
+        <table class="work-table" style="font-size:12px;min-width:560px">
+          <thead><tr><th>担当者</th><th>都道府県</th><th>件数</th><th>合計売上</th><th>平均売上</th><th>歩合給合計</th></tr></thead>
+          <tbody id="analyticsByStaffBody"></tbody>
+        </table>
+      </div>
     </div>
     <div style="margin-top:20px">
       <div class="section-title">案件明細</div>
-      <table class="work-table" style="font-size:12px">
-        <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
-        <tbody id="analyticsDetailBody"></tbody>
-      </table>
+      <div style="overflow-x:auto">
+        <table class="work-table" style="font-size:12px;min-width:820px">
+          <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
+          <tbody id="analyticsDetailBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1351,8 +1355,6 @@ async function loadAnalytics() {
   btn.disabled = true; btn.textContent = '更新中...';
   try {
     const result = await gasCall('getAnalytics', { session: session.token, range });
-    document.getElementById('analyticsTotalVisits').textContent = `${result.totalVisits}件`;
-    document.getElementById('analyticsAvgRevenue').textContent = '¥' + result.avgRevenue.toLocaleString();
 
     const regionSection = document.getElementById('analyticsRegionSection');
     if (result.byRegion) {
@@ -1378,8 +1380,10 @@ async function loadAnalytics() {
       <tr>
         <td>${escapeHtml(s.staff)}</td>
         <td>${escapeHtml(s.region || '-')}</td>
-        <td style="text-align:right">合計 ¥${s.totalRevenue.toLocaleString()}</td>
-        <td style="text-align:right">平均 ¥${s.avgRevenue.toLocaleString()}</td>
+        <td style="text-align:right">${s.count}件</td>
+        <td style="text-align:right">¥${s.totalRevenue.toLocaleString()}</td>
+        <td style="text-align:right">¥${s.avgRevenue.toLocaleString()}</td>
+        <td style="text-align:right">¥${s.commissionTotal.toLocaleString()}</td>
       </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
 
