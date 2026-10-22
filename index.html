@@ -583,8 +583,8 @@
     <div style="margin-top:20px">
       <div class="section-title">案件明細</div>
       <div style="overflow-x:auto">
-        <table class="work-table" style="font-size:12px;min-width:820px">
-          <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合給</th></tr></thead>
+        <table class="work-table" style="font-size:12px;min-width:900px">
+          <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合率</th><th>歩合給</th></tr></thead>
           <tbody id="analyticsDetailBody"></tbody>
         </table>
       </div>
@@ -1371,6 +1371,25 @@ async function loadAnalytics() {
           <td style="text-align:right">${r.profitMargin}%</td>
         </tr>`
       ).join('') || '<tr><td>データがありません</td></tr>';
+
+      if (result.byRegion.length > 0) {
+        const totalCount = result.byRegion.reduce((sum, r) => sum + r.count, 0);
+        const totalRevenue = result.byRegion.reduce((sum, r) => sum + r.revenue, 0);
+        const totalCost = result.byRegion.reduce((sum, r) => sum + r.cost, 0);
+        const totalLabor = result.byRegion.reduce((sum, r) => sum + r.laborCost, 0);
+        const totalProfit = result.byRegion.reduce((sum, r) => sum + r.profit, 0);
+        const totalMargin = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 1000) / 10 : 0;
+        regionBody.innerHTML += `
+          <tr style="font-weight:700;border-top:2px solid var(--blue)">
+            <td>合計</td>
+            <td style="text-align:right">${totalCount}件</td>
+            <td style="text-align:right">¥${totalRevenue.toLocaleString()}</td>
+            <td style="text-align:right">¥${totalCost.toLocaleString()}</td>
+            <td style="text-align:right">¥${totalLabor.toLocaleString()}</td>
+            <td style="text-align:right">¥${totalProfit.toLocaleString()}</td>
+            <td style="text-align:right">${totalMargin}%</td>
+          </tr>`;
+      }
     } else {
       regionSection.hidden = true;
     }
@@ -1399,6 +1418,7 @@ async function loadAnalytics() {
         <td style="text-align:right">¥${(d.revenue || 0).toLocaleString()}</td>
         <td style="text-align:right">${d.cost != null ? '¥' + d.cost.toLocaleString() : '-'}</td>
         <td style="text-align:right">${d.grossProfit != null ? '¥' + d.grossProfit.toLocaleString() : '-'}</td>
+        <td style="text-align:right">${d.commissionRate != null ? d.commissionRate + '%' : '-'}</td>
         <td style="text-align:right">${d.commission != null ? '¥' + d.commission.toLocaleString() : '-'}</td>
       </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
