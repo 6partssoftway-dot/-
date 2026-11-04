@@ -174,6 +174,27 @@
   </div>
 </div>
 
+<div class="page" id="customerSelectScreen" hidden>
+  <div class="user-bar">
+    <span id="selectBarName"></span>
+    <div class="bar-actions">
+      <button type="button" class="btn-logout" id="selectLogoutBtn">ログアウト</button>
+    </div>
+  </div>
+  <div class="page-header">
+    <h1>本日のお客様</h1>
+    <p>カレンダーの予定から選ぶと、内容を入力した状態でフォームが開きます</p>
+  </div>
+  <div class="section">
+    <button type="button" class="btn-add-row" id="selectRefreshBtn">予定を取得する</button>
+    <p id="selectError" class="error-msg" style="margin-top:8px"></p>
+    <div id="selectEventList" style="margin-top:12px"></div>
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+      <button type="button" class="btn-submit" id="selectManualBtn">予定にないお客様（手入力で進める）</button>
+    </div>
+  </div>
+</div>
+
 <div class="page" id="mainPage" hidden>
   <div class="user-bar">
     <span id="userBarName"></span>
@@ -697,13 +718,74 @@ async function gasCall(action, extra, timeoutMs = 30000) {
 
 function showLoginScreen() {
   document.getElementById('loginScreen').hidden = false;
+  document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('mainPage').hidden = true;
   document.getElementById('adminScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = true;
 }
 
+// ログイン直後はここに来る。カレンダーの予定から選ぶか、手入力で進めるかを選択する画面。
+function showCustomerSelectScreen(session) {
+  document.getElementById('loginScreen').hidden = true;
+  document.getElementById('mainPage').hidden = true;
+  document.getElementById('adminScreen').hidden = true;
+  document.getElementById('analyticsScreen').hidden = true;
+  document.getElementById('customerSelectScreen').hidden = false;
+  document.getElementById('selectBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
+  document.getElementById('selectError').textContent = '';
+  document.getElementById('selectEventList').innerHTML = '';
+  loadTodaysCustomerList();
+}
+
+async function loadTodaysCustomerList() {
+  const errEl = document.getElementById('selectError');
+  const listEl = document.getElementById('selectEventList');
+  errEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('selectRefreshBtn');
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    const result = await gasCall('getTodaysCalendarEvents', { session: session.token });
+    const events = result.events || [];
+    if (events.length === 0) {
+      listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">本日の予定は見つかりませんでした。</p>';
+    } else {
+      listEl.innerHTML = events.map((ev, idx) => `
+        <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:8px;padding:12px 14px">
+          <strong>${escapeHtml(ev.start)}〜${escapeHtml(ev.end)}</strong><br>${escapeHtml(ev.title || '（無題の予定）')}${ev.calendarName ? `　<span style="color:var(--gray);font-size:11px">[${escapeHtml(ev.calendarName)}]</span>` : ''}
+        </button>`
+      ).join('');
+      listEl.querySelectorAll('.calendar-event-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          const ev = events[Number(b.dataset.idx)];
+          showMainScreen(session);
+          fillFormFromCalendarEvent(ev);
+        });
+      });
+    }
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '予定を取得する';
+  }
+}
+
+document.getElementById('selectRefreshBtn').addEventListener('click', loadTodaysCustomerList);
+document.getElementById('selectManualBtn').addEventListener('click', () => {
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  showMainScreen(session);
+});
+document.getElementById('selectLogoutBtn').addEventListener('click', () => {
+  clearSession();
+  showLoginScreen();
+});
+
 function showMainScreen(session) {
   document.getElementById('loginScreen').hidden = true;
+  document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('adminScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = true;
   document.getElementById('mainPage').hidden = false;
@@ -1509,7 +1591,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, prefectures: result.prefectures || [], expiresAt };
     saveSession(session);
     document.getElementById('pinInput').value = '';
-    showMainScreen(session);
+    showCustomerSelectScreen(session);
   } catch (err) {
     errEl.textContent = err.message;
   } finally {
@@ -2249,7 +2331,7 @@ document.getElementById('paymentMonth').value = m;
 
 const initialSession = getSession();
 if (initialSession) {
-  showMainScreen(initialSession);
+  showCustomerSelectScreen(initialSession);
 } else {
   showLoginScreen();
 }
