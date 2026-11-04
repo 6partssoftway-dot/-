@@ -394,11 +394,6 @@
     <!-- お客様情報＋署名（まとめて最下部） -->
     <div class="section">
       <div class="section-title">【お客様情報・署名】</div>
-      <div style="margin-bottom:12px">
-        <button type="button" class="btn-add-row" id="calendarPickBtn">本日の予定から選ぶ</button>
-        <p id="calendarPickError" class="error-msg" style="margin-top:6px"></p>
-        <div id="calendarPickList" style="margin-top:8px"></div>
-      </div>
       <div class="grid-2" style="margin-bottom:14px">
         <div class="field">
           <label>お名前 <span class="req">*</span></label>
@@ -2179,40 +2174,6 @@ function fillFormFromCalendarEvent(ev) {
     if (opt) sel.value = opt.value;
   }
 }
-
-document.getElementById('calendarPickBtn').addEventListener('click', async () => {
-  const errEl = document.getElementById('calendarPickError');
-  const listEl = document.getElementById('calendarPickList');
-  errEl.textContent = '';
-  const session = getSession();
-  if (!session) { showLoginScreen(); return; }
-  const btn = document.getElementById('calendarPickBtn');
-  btn.disabled = true; btn.textContent = '取得中...';
-  try {
-    const result = await gasCall('getTodaysCalendarEvents', { session: session.token });
-    const events = result.events || [];
-    if (events.length === 0) {
-      listEl.innerHTML = '<p style="font-size:12px;color:var(--gray)">本日の予定は見つかりませんでした。</p>';
-    } else {
-      listEl.innerHTML = events.map((ev, idx) => `
-        <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:6px">
-          ${escapeHtml(ev.start)}〜${escapeHtml(ev.end)}　${escapeHtml(ev.title || '（無題の予定）')}${ev.calendarName ? `　<span style="color:var(--gray)">[${escapeHtml(ev.calendarName)}]</span>` : ''}
-        </button>`
-      ).join('');
-      listEl.querySelectorAll('.calendar-event-btn').forEach(b => {
-        b.addEventListener('click', () => {
-          fillFormFromCalendarEvent(events[Number(b.dataset.idx)]);
-          listEl.innerHTML = '';
-        });
-      });
-    }
-  } catch (err) {
-    errEl.textContent = err.message;
-    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
-  } finally {
-    btn.disabled = false; btn.textContent = '本日の予定から選ぶ';
-  }
-});
 
 // ===== SUBMIT =====
 document.getElementById('repairForm').addEventListener('submit', async e => {
