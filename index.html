@@ -742,7 +742,9 @@ async function loadTodaysCustomerList() {
   btn.disabled = true; btn.textContent = '取得中...';
   try {
     const result = await gasCall('getTodaysCalendarEvents', { session: session.token });
-    const events = result.events || [];
+    // 「地域名　お客様名」形式（スペース区切りで2語以上）の予定だけをお客様の予定として扱う。
+    // 「洗濯機受け取り」のような1語だけの予定（お客様訪問ではないメモ）は除外する。
+    const events = (result.events || []).filter(ev => (ev.title || '').trim().split(/[\s　]+/).filter(Boolean).length >= 2);
     if (events.length === 0) {
       listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">本日の予定は見つかりませんでした。</p>';
     } else {
