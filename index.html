@@ -753,7 +753,7 @@ async function loadTodaysCustomerList() {
     } else {
       listEl.innerHTML = events.map((ev, idx) => `
         <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:8px;padding:12px 14px">
-          <strong>${escapeHtml(ev.start)}〜${escapeHtml(ev.end)}</strong><br>${escapeHtml(ev.title || '（無題の予定）')}${ev.calendarName ? `　<span style="color:var(--gray);font-size:11px">[${escapeHtml(ev.calendarName)}]</span>` : ''}
+          ${escapeHtml(ev.title || '（無題の予定）')}
         </button>`
       ).join('');
       listEl.querySelectorAll('.calendar-event-btn').forEach(b => {
