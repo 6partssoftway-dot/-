@@ -373,6 +373,11 @@
     <!-- お客様情報＋署名（まとめて最下部） -->
     <div class="section">
       <div class="section-title">【お客様情報・署名】</div>
+      <div style="margin-bottom:12px">
+        <button type="button" class="btn-add-row" id="calendarPickBtn">本日の予定から選ぶ</button>
+        <p id="calendarPickError" class="error-msg" style="margin-top:6px"></p>
+        <div id="calendarPickList" style="margin-top:8px"></div>
+      </div>
       <div class="grid-2" style="margin-bottom:14px">
         <div class="field">
           <label>お名前 <span class="req">*</span></label>
@@ -1963,6 +1968,169 @@ async function generateWarrantyCertPDF(d, endDate) {
   pdf.addImage(imgData, 'JPEG', x, 10, w, h);
   return pdf;
 }
+
+// ===== Googleカレンダー連携（本日の予定からお客様情報・案件情報の入力を省力化） =====
+// 件名は「地域名　お客様名」、詳細欄は「ラベル：値」を1行ずつ書く運用を想定した解析。
+// 書かれていない項目は無視するだけなので、どこまで書くかは自由。
+const CALENDAR_PREF_ALIASES = {
+  '北九州': '福岡県', '福岡': '福岡県', '博多': '福岡県', '久留米': '福岡県', '糟屋': '福岡県', '糸島': '福岡県',
+  '大野城': '福岡県', '春日': '福岡県', '太宰府': '福岡県', '筑紫野': '福岡県', '古賀': '福岡県', '宗像': '福岡県',
+  '小郡': '福岡県', '直方': '福岡県', 'うきは': '福岡県', '筑後': '福岡県', '飯塚': '福岡県', '那珂川': '福岡県',
+  '志免': '福岡県', '新宮': '福岡県', '粕屋': '福岡県', '篠栗': '福岡県', '宇美': '福岡県', '苅田': '福岡県',
+  '鹿児島': '鹿児島県',
+  '佐賀': '佐賀県', '唐津': '佐賀県', '鳥栖': '佐賀県',
+  '宮崎': '宮崎県', '延岡': '宮崎県', '都城': '宮崎県'
+};
+
+// 都道府県名そのもの、または市区町村名のエイリアスが含まれていないか文字列から判定する
+function guessPrefectureFromText(text) {
+  if (!text) return '';
+  for (const p of PREFECTURES) {
+    if (text.includes(p)) return p;
+  }
+  for (const key in CALENDAR_PREF_ALIASES) {
+    if (text.includes(key)) return CALENDAR_PREF_ALIASES[key];
+  }
+  return '';
+}
+
+function parseCalendarEventForForm(ev) {
+  const title = (ev.title || '').trim();
+  const titleParts = title.split(/[\s　]+/).filter(Boolean);
+  let regionGuess = '', nameGuess = title;
+  if (titleParts.length >= 2) {
+    regionGuess = titleParts[0];
+    nameGuess = titleParts.slice(1).join(' ');
+  }
+
+  const fields = {};
+  (ev.description || '').split(/\r?\n/).forEach(line => {
+    const m = line.match(/^\s*([^:：]+)[:：]\s*(.+)$/);
+    if (m) fields[m[1].trim()] = m[2].trim();
+  });
+
+  const nameOverride = fields['名前'] || fields['お客様名'] || fields['客様名'] || '';
+  const address = fields['住所'] || ev.location || '';
+
+  // 都道府県の判定優先順位：①詳細欄に明記 ②住所の文字列から判定 ③件名先頭の地域名から判定
+  let pref = fields['都道府県'] || '';
+  if (pref && !PREFECTURES.includes(pref)) pref = '';
+  if (!pref) pref = guessPrefectureFromText(address);
+  if (!pref) pref = guessPrefectureFromText(regionGuess);
+
+  let washType = '';
+  const typeRaw = fields['種類'] || '';
+  if (typeRaw.includes('ドラム')) washType = 'ドラム式';
+  else if (typeRaw.includes('縦')) washType = '縦型';
+
+  return {
+    name: nameOverride || nameGuess,
+    prefecture: pref,
+    address,
+    phone: fields['電話'] || fields['TEL'] || fields['電話番号'] || '',
+    email: fields['メール'] || fields['メールアドレス'] || '',
+    maker: fields['メーカー'] || fields['機種'] || '',
+    washType,
+    symptom: fields['症状'] || '',
+    errorCodes: (fields['エラー'] || '').split(/[,、\s]+/).filter(Boolean),
+    orderSourceRaw: fields['受注元'] || '',
+    contactMethodRaw: fields['問合せ'] || fields['問合せ方法'] || fields['問い合わせ'] || ''
+  };
+}
+
+function fillFormFromCalendarEvent(ev) {
+  const parsed = parseCalendarEventForForm(ev);
+  if (parsed.name) document.getElementById('name').value = parsed.name;
+
+  const addr = parsed.address || ev.location || '';
+  if (addr) document.getElementById('address').value = addr;
+
+  if (parsed.phone) document.getElementById('phone').value = parsed.phone;
+
+  if (parsed.email && parsed.email.includes('@')) {
+    const [local, domain] = parsed.email.split('@');
+    document.getElementById('noEmail').checked = false;
+    document.getElementById('emailLocal').value = local;
+    const knownDomain = [...emailDomainEl.options].some(o => o.value === domain);
+    emailDomainEl.value = knownDomain ? domain : '__other__';
+    emailDomainEl.dispatchEvent(new Event('change'));
+    if (!knownDomain) emailDomainCustomEl.value = domain;
+  }
+
+  if (parsed.prefecture) {
+    const prefWrap = document.getElementById('visitPrefectureWrap');
+    const prefSel = document.getElementById('visitPrefecture');
+    if (!prefWrap.hidden && [...prefSel.options].some(o => o.value === parsed.prefecture)) {
+      prefSel.value = parsed.prefecture;
+    }
+  }
+
+  if (parsed.maker) document.getElementById('maker').value = parsed.maker;
+
+  if (parsed.washType) {
+    const radio = document.querySelector(`input[name="washType"][value="${parsed.washType}"]`);
+    if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+  }
+
+  if (parsed.symptom) document.getElementById('symptom').value = parsed.symptom;
+
+  if (parsed.errorCodes.length) {
+    const knownBoxes = [...document.querySelectorAll('input[name="error"]')];
+    const unmatched = [];
+    parsed.errorCodes.forEach(code => {
+      const cb = knownBoxes.find(b => b.value.toLowerCase() === code.toLowerCase());
+      if (cb) cb.checked = true;
+      else unmatched.push(code);
+    });
+    if (unmatched.length) document.getElementById('errorOther').value = unmatched.join(', ');
+  }
+
+  if (parsed.orderSourceRaw) {
+    const sel = document.getElementById('orderSource');
+    const opt = [...sel.options].find(o => o.value === parsed.orderSourceRaw || o.value.startsWith(parsed.orderSourceRaw));
+    if (opt) sel.value = opt.value;
+  }
+
+  if (parsed.contactMethodRaw) {
+    const sel = document.getElementById('contactMethod');
+    const opt = [...sel.options].find(o => o.value === parsed.contactMethodRaw || o.value.startsWith(parsed.contactMethodRaw));
+    if (opt) sel.value = opt.value;
+  }
+}
+
+document.getElementById('calendarPickBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('calendarPickError');
+  const listEl = document.getElementById('calendarPickList');
+  errEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  const btn = document.getElementById('calendarPickBtn');
+  btn.disabled = true; btn.textContent = '取得中...';
+  try {
+    const result = await gasCall('getTodaysCalendarEvents', { session: session.token });
+    const events = result.events || [];
+    if (events.length === 0) {
+      listEl.innerHTML = '<p style="font-size:12px;color:var(--gray)">本日の予定は見つかりませんでした。</p>';
+    } else {
+      listEl.innerHTML = events.map((ev, idx) => `
+        <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:6px">
+          ${escapeHtml(ev.start)}〜${escapeHtml(ev.end)}　${escapeHtml(ev.title || '（無題の予定）')}${ev.calendarName ? `　<span style="color:var(--gray)">[${escapeHtml(ev.calendarName)}]</span>` : ''}
+        </button>`
+      ).join('');
+      listEl.querySelectorAll('.calendar-event-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          fillFormFromCalendarEvent(events[Number(b.dataset.idx)]);
+          listEl.innerHTML = '';
+        });
+      });
+    }
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '本日の予定から選ぶ';
+  }
+});
 
 // ===== SUBMIT =====
 document.getElementById('repairForm').addEventListener('submit', async e => {
