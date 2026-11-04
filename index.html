@@ -183,6 +183,10 @@
       <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
     </div>
   </div>
+  <div id="priceListWarning" hidden style="background:#fff4e5;border:1px solid #f0b46a;color:#8a4b00;border-radius:8px;padding:10px 12px;margin:8px 0;font-size:13px;line-height:1.6">
+    ⚠ 最新の価格表を取得できませんでした。内蔵の価格で表示しているため、料金が最新でない可能性があります。
+    <button type="button" id="priceListRetryBtn" style="margin-left:6px;padding:4px 10px;font-size:12px">再取得</button>
+  </div>
   <div class="page-header">
     <h1>洗濯機 修理作業報告書・同意書</h1>
     <p>洗濯機修理センター ／ 作業完了後、お客様にご確認・ご署名いただいてください</p>
@@ -467,7 +471,7 @@
     <table class="work-table admin-table">
       <thead>
         <tr>
-          <th>ID</th><th>作業内容</th><th>備考</th><th>金額</th><th>値引き</th><th></th>
+          <th></th><th>ID</th><th>作業内容</th><th>備考</th><th>金額</th><th>値引き</th><th></th>
         </tr>
       </thead>
       <tbody id="adminPriceTableBody"></tbody>
@@ -639,14 +643,45 @@ function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-async function gasCall(action, extra) {
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(Object.assign({ action }, extra)),
-    redirect: 'follow',
-  });
-  const result = await res.json().catch(() => ({}));
+// 端末のローカル日付（日本時間）を YYYY-MM-DD で返す。toISOString() はUTCのため、0〜9時に前日になる
+function localDateStr(d = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// 電波が悪い現場で「送信中...」のまま固まらないよう、応答が無ければタイムアウトさせる
+async function gasCall(action, extra, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let res, result;
+  try {
+    res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(Object.assign({ action }, extra)),
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const err = new Error(`サーバーエラーが発生しました（HTTP ${res.status}）`);
+      err.code = 'http_' + res.status;
+      throw err;
+    }
+    // 本文の受信もタイムアウトの対象に含める
+    const text = await res.text();
+    try { result = JSON.parse(text); } catch (e) {
+      const err = new Error('サーバーの応答を読み取れませんでした');
+      err.code = 'bad_response';
+      throw err;
+    }
+  } catch (e) {
+    if (e.code) throw e;
+    const err = new Error(e.name === 'AbortError' ? 'サーバーから応答がありません（タイムアウト）' : '通信できませんでした。電波状況を確認してください');
+    err.code = e.name === 'AbortError' ? 'timeout' : 'network';
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   if (result.status !== 'success') {
     const err = new Error(result.message || '通信エラーが発生しました');
     err.code = result.code || '';
@@ -699,17 +734,30 @@ function getVisitPrefecture() {
 }
 
 // サーバー側の価格表を取得して置き換える。取得できなければ、アプリ内蔵のデフォルト価格表（ITEMSの初期値）のまま動かす
+// （電波が悪い現場でも受付は止めない。ただし古い価格の可能性があることを画面に出し、再取得できるようにする）
 async function loadPriceListFromServer(sessionToken) {
+  const warnEl = document.getElementById('priceListWarning');
   try {
     const result = await gasCall('getConfig', { session: sessionToken, configType: 'priceList' });
     if (Array.isArray(result.items) && result.items.length > 0) {
       ITEMS = result.items;
       buildTable();
     }
+    warnEl.hidden = true;
   } catch (err) {
     console.warn('価格表の取得に失敗したため、内蔵のデフォルト価格表を使用します:', err.message);
+    warnEl.hidden = false;
   }
 }
+
+document.getElementById('priceListRetryBtn').addEventListener('click', async e => {
+  const session = getSession();
+  if (!session) return;
+  // 連打で取得が並行し、古い結果が後から適用されないようにする
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  try { await loadPriceListFromServer(session.token); } finally { btn.disabled = false; }
+});
 
 // ===== 管理画面：価格表編集 =====
 let adminPriceBaseVersion = null;
@@ -763,6 +811,10 @@ async function loadAdminPriceList() {
 function buildAdminPriceRow(item) {
   const tr = document.createElement('tr');
   tr.innerHTML = `
+    <td style="white-space:nowrap">
+      <button type="button" class="btn-row-up" title="上へ" style="padding:2px 6px">↑</button>
+      <button type="button" class="btn-row-down" title="下へ" style="padding:2px 6px">↓</button>
+    </td>
     <td><input type="text" class="admin-id" value="${escapeHtml(item.id || '')}"></td>
     <td><input type="text" class="admin-label" value="${escapeHtml(item.label || '')}"></td>
     <td><input type="text" class="admin-note" value="${escapeHtml(item.note || '')}"></td>
@@ -770,6 +822,14 @@ function buildAdminPriceRow(item) {
     <td style="text-align:center"><input type="checkbox" class="admin-discount" ${item.discount ? 'checked' : ''}></td>
     <td><button type="button" class="btn-row-delete">削除</button></td>`;
   tr.querySelector('.btn-row-delete').addEventListener('click', () => tr.remove());
+  tr.querySelector('.btn-row-up').addEventListener('click', () => {
+    const prev = tr.previousElementSibling;
+    if (prev) tr.parentElement.insertBefore(tr, prev);
+  });
+  tr.querySelector('.btn-row-down').addEventListener('click', () => {
+    const next = tr.nextElementSibling;
+    if (next) tr.parentElement.insertBefore(next, tr);
+  });
   return tr;
 }
 
@@ -831,7 +891,7 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
     if (tab === 'commission') loadAdminCommissionTiers();
     if (tab === 'settlement') {
       if (!document.getElementById('settlementDate').value) {
-        document.getElementById('settlementDate').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('settlementDate').value = localDateStr();
       }
       loadWeeklySettlement();
     }
@@ -1222,7 +1282,7 @@ async function loadWeeklySettlement() {
   errEl.textContent = ''; noteEl.textContent = ''; listEl.innerHTML = '';
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
-  const date = document.getElementById('settlementDate').value || new Date().toISOString().slice(0, 10);
+  const date = document.getElementById('settlementDate').value || localDateStr();
 
   const btn = document.getElementById('settlementRefreshBtn');
   btn.disabled = true; btn.textContent = '取得中...';
@@ -1778,7 +1838,8 @@ async function sendToNotion(d) {
   const session = getSession();
   if (!session) { const e = new Error('セッションが切れました。再度ログインしてください。'); e.code = 'session_expired'; throw e; }
 
-  return gasCall('submitRepair', { session: session.token, data });
+  // 送信はサーバー側でNotion記帳・PDF添付メール送信まで行うため、通常の呼び出しより長めに待つ
+  return gasCall('submitRepair', { session: session.token, data }, 90000);
 }
 
 // ===== 領収書PDF生成 =====
@@ -1852,7 +1913,7 @@ function downloadReceiptPdf() {
 
 // ===== 延長保証書PDF（加入した場合のみ生成） =====
 function computeWarrantyEndDateDisplay() {
-  return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return localDateStr(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
 }
 
 function fillWarrantyCertTemplate(d, endDate) {
@@ -1915,6 +1976,10 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     errEl.textContent = 'メールアドレスを入力するか、「メールアドレスをお持ちでない」にチェックしてください。';
     return;
   }
+  if (!noEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(getEmailValue())) {
+    errEl.textContent = 'メールアドレスの形式が正しくありません（全角文字・空白・「@」の重複などをご確認ください）。';
+    return;
+  }
 
   if (!document.getElementById('visitPrefectureWrap').hidden && !getVisitPrefecture()) {
     errEl.textContent = '訪問先の都道府県を選択してください。';
@@ -1925,7 +1990,7 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   const btn = document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='送信中...';
 
-  let notionOk = false, emailOk = false, notionErr = '', emailErr = '', pdfOk = false, warrantyResult = null, warrantyUsageResult = null;
+  let notionOk = false, emailOk = false, notionErr = '', notionErrCode = '', emailErr = '', pdfOk = false, warrantyResult = null, warrantyUsageResult = null;
 
   const isWarrantyUsageVisit = data.warrantyUsage === '1回目' || data.warrantyUsage === '2回目';
   if (!isWarrantyUsageVisit) {
@@ -1947,6 +2012,7 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     warrantyUsageResult = result.warrantyUsage || null;
   } catch(err) {
     notionErr = err.message;
+    notionErrCode = err.code || '';
     if (err.code === 'session_expired') {
       clearSession();
       btn.disabled=false; btn.textContent='同意して送信する';
@@ -1988,7 +2054,12 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
       }
     }
   } else {
-    errEl.textContent='送信に失敗しました。担当者にお声がけください。（'+notionErr+')';
+    if (/^(timeout|network|bad_response|http_)/.test(notionErrCode)) {
+      // 送信の成否が不明なケース。サーバー側で処理が完了している可能性があり、そのまま再送すると二重記帳になり得る
+      errEl.textContent = `送信結果を確認できませんでした（${notionErr}）。記録・メール送信が完了している可能性があるため、再送信する前にNotionで記録の有無を確認してください。`;
+    } else {
+      errEl.textContent='送信に失敗しました。担当者にお声がけください。（'+notionErr+')';
+    }
     btn.disabled=false; btn.textContent='同意して送信する';
   }
 });
@@ -2002,7 +2073,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
 // ===== INIT =====
 buildTable();
-document.getElementById('visitDate').value = new Date().toISOString().slice(0,10);
+document.getElementById('visitDate').value = localDateStr();
 const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const m = months[new Date().getMonth()];
 document.getElementById('regMonth').value = m;
