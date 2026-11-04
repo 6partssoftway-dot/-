@@ -489,14 +489,7 @@
 
   <div class="section admin-tab-panel" id="adminTabPrice">
     <div class="section-title">【価格表】</div>
-    <table class="work-table admin-table">
-      <thead>
-        <tr>
-          <th></th><th>ID</th><th>作業内容</th><th>備考</th><th>金額</th><th>値引き</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="adminPriceTableBody"></tbody>
-    </table>
+    <div id="adminPriceList"></div>
     <button type="button" class="btn-add-row" id="addPriceRowBtn">＋ 項目を追加</button>
     <div class="submit-area" style="padding:16px 0 0">
       <p id="adminError" class="error-msg"></p>
@@ -849,7 +842,7 @@ let adminPriceBaseVersion = null;
 document.getElementById('adminOpenBtn').addEventListener('click', openAdminScreen);
 document.getElementById('adminBackBtn').addEventListener('click', closeAdminScreen);
 document.getElementById('addPriceRowBtn').addEventListener('click', () => {
-  document.getElementById('adminPriceTableBody').appendChild(
+  document.getElementById('adminPriceList').appendChild(
     buildAdminPriceRow({ id: '', label: '', note: '', price: 0, discount: false })
   );
 });
@@ -883,9 +876,9 @@ async function loadAdminPriceList() {
   try {
     const result = await gasCall('getConfig', { session: session.token, configType: 'priceList' });
     adminPriceBaseVersion = result.version;
-    const tbody = document.getElementById('adminPriceTableBody');
-    tbody.innerHTML = '';
-    result.items.forEach(item => tbody.appendChild(buildAdminPriceRow(item)));
+    const list = document.getElementById('adminPriceList');
+    list.innerHTML = '';
+    result.items.forEach(item => list.appendChild(buildAdminPriceRow(item)));
   } catch (err) {
     errEl.textContent = '価格表の取得に失敗しました: ' + err.message;
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
@@ -893,28 +886,60 @@ async function loadAdminPriceList() {
 }
 
 function buildAdminPriceRow(item) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td style="white-space:nowrap">
-      <button type="button" class="btn-row-up" title="上へ" style="padding:2px 6px">↑</button>
-      <button type="button" class="btn-row-down" title="下へ" style="padding:2px 6px">↓</button>
-    </td>
-    <td><input type="text" class="admin-id" value="${escapeHtml(item.id || '')}"></td>
-    <td><input type="text" class="admin-label" value="${escapeHtml(item.label || '')}"></td>
-    <td><input type="text" class="admin-note" value="${escapeHtml(item.note || '')}"></td>
-    <td><input type="number" class="admin-price" value="${item.price ?? ''}" placeholder="（入力式）" min="0"></td>
-    <td style="text-align:center"><input type="checkbox" class="admin-discount" ${item.discount ? 'checked' : ''}></td>
-    <td><button type="button" class="btn-row-delete">削除</button></td>`;
-  tr.querySelector('.btn-row-delete').addEventListener('click', () => tr.remove());
-  tr.querySelector('.btn-row-up').addEventListener('click', () => {
-    const prev = tr.previousElementSibling;
-    if (prev) tr.parentElement.insertBefore(tr, prev);
+  const card = document.createElement('div');
+  card.className = 'staff-card';
+  card.innerHTML = `
+    <div class="staff-card-header">
+      <strong>${escapeHtml(item.label || '（新規項目）')}</strong>
+      <div style="white-space:nowrap">
+        <button type="button" class="btn-row-up" title="上へ" style="padding:2px 8px">↑</button>
+        <button type="button" class="btn-row-down" title="下へ" style="padding:2px 8px">↓</button>
+      </div>
+    </div>
+    <div class="staff-field-grid">
+      <div class="staff-field">
+        <label>ID（内部管理用）</label>
+        <input type="text" class="admin-id" value="${escapeHtml(item.id || '')}">
+      </div>
+      <div class="staff-field">
+        <label>作業内容</label>
+        <input type="text" class="admin-label" value="${escapeHtml(item.label || '')}">
+      </div>
+      <div class="staff-field">
+        <label>備考</label>
+        <input type="text" class="admin-note" value="${escapeHtml(item.note || '')}">
+      </div>
+      <div class="staff-field">
+        <label>金額（税抜）</label>
+        <input type="number" class="admin-price" value="${item.price ?? ''}" placeholder="空欄＝都度入力式" min="0">
+      </div>
+      <div class="staff-field">
+        <label>値引き項目</label>
+        <label class="no-email-check" style="margin-top:6px">
+          <input type="checkbox" class="admin-discount" ${item.discount ? 'checked' : ''}>
+          この項目を値引き（マイナス）として扱う
+        </label>
+      </div>
+    </div>
+    <div class="staff-card-footer">
+      <button type="button" class="btn-row-delete">この項目を削除</button>
+    </div>`;
+  card.querySelector('.admin-label').addEventListener('input', e => {
+    card.querySelector('.staff-card-header strong').textContent = e.target.value || '（新規項目）';
   });
-  tr.querySelector('.btn-row-down').addEventListener('click', () => {
-    const next = tr.nextElementSibling;
-    if (next) tr.parentElement.insertBefore(next, tr);
+  card.querySelector('.btn-row-delete').addEventListener('click', () => {
+    const label = card.querySelector('.admin-label').value || '（名称未入力）';
+    if (confirm(`「${label}」を削除します。よろしいですか？`)) card.remove();
   });
-  return tr;
+  card.querySelector('.btn-row-up').addEventListener('click', () => {
+    const prev = card.previousElementSibling;
+    if (prev) card.parentElement.insertBefore(card, prev);
+  });
+  card.querySelector('.btn-row-down').addEventListener('click', () => {
+    const next = card.nextElementSibling;
+    if (next) card.parentElement.insertBefore(next, card);
+  });
+  return card;
 }
 
 async function saveAdminPriceList() {
@@ -922,13 +947,13 @@ async function saveAdminPriceList() {
   const okEl = document.getElementById('adminSuccess');
   errEl.textContent = ''; okEl.textContent = '';
 
-  const rows = [...document.querySelectorAll('#adminPriceTableBody tr')];
-  const items = rows.map(tr => {
-    const id = tr.querySelector('.admin-id').value.trim();
-    const label = tr.querySelector('.admin-label').value.trim();
-    const note = tr.querySelector('.admin-note').value.trim();
-    const priceRaw = tr.querySelector('.admin-price').value;
-    const discount = tr.querySelector('.admin-discount').checked;
+  const cards = [...document.querySelectorAll('#adminPriceList .staff-card')];
+  const items = cards.map(card => {
+    const id = card.querySelector('.admin-id').value.trim();
+    const label = card.querySelector('.admin-label').value.trim();
+    const note = card.querySelector('.admin-note').value.trim();
+    const priceRaw = card.querySelector('.admin-price').value;
+    const discount = card.querySelector('.admin-discount').checked;
     const item = { id, label, note, price: priceRaw === '' ? null : Number(priceRaw) };
     if (discount) item.discount = true;
     return item;
