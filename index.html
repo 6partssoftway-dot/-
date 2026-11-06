@@ -1048,12 +1048,22 @@ async function loadAdminStaff() {
     } catch (e) { pendingLineUsersCache = []; }
     const list = document.getElementById('adminStaffList');
     list.innerHTML = '';
+    // 管理者は都道府県グループより先に、一番上にまとめて表示する
+    const admins = result.staff.filter(s => s.role === 'admin');
+    const nonAdmins = result.staff.filter(s => s.role !== 'admin');
+    if (admins.length > 0) {
+      const adminHeader = document.createElement('div');
+      adminHeader.className = 'section-title';
+      adminHeader.textContent = '【管理者】';
+      list.appendChild(adminHeader);
+      admins.forEach(s => list.appendChild(buildAdminStaffCard(s)));
+    }
     // 担当都道府県（先頭の1つ）ごとにグループ化して表示する。複数県を担当する場合は先頭の県の
     // グループに表示し、カード内に残りの県も分かるようにする（カードを複製すると保存時に
     // 二重送信になってしまうため、表示上のグループ分けのみ）。
     const groups = {};
     const unassigned = [];
-    result.staff.forEach(s => {
+    nonAdmins.forEach(s => {
       const prefs = Array.isArray(s.prefectures) ? s.prefectures : [];
       if (prefs.length === 0) { unassigned.push(s); return; }
       const key = prefs[0];
