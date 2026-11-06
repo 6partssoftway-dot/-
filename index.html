@@ -1013,9 +1013,22 @@ document.querySelectorAll('.admin-tab-btn').forEach(btn => {
 let adminStaffBaseVersion = null;
 let pendingLineUsersCache = [];
 
+// 新規スタッフのPINを自動発行する（6桁）。画面に今表示中の他のスタッフのPINとは重複しないようにする
+// （Script Properties全体との重複チェックは保存時にサーバー側で行われる）
+function generateRandomStaffPin() {
+  const existing = new Set(
+    [...document.querySelectorAll('#adminStaffList .staff-pin')].map(el => el.value.trim())
+  );
+  let pin;
+  do {
+    pin = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+  } while (existing.has(pin));
+  return pin;
+}
+
 document.getElementById('addStaffRowBtn').addEventListener('click', () => {
   document.getElementById('adminStaffList').appendChild(
-    buildAdminStaffCard({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: '', role: 'staff', active: true, prefectures: [], lineUserId: '' })
+    buildAdminStaffCard({ id: 'new_' + Date.now() + '_' + Math.floor(Math.random() * 10000), name: '', email: '', pin: generateRandomStaffPin(), role: 'staff', active: true, prefectures: [], lineUserId: '' })
   );
 });
 document.getElementById('saveStaffBtn').addEventListener('click', saveAdminStaff);
