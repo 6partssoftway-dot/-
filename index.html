@@ -1069,6 +1069,19 @@ async function loadAdminStaff() {
   }
 }
 
+// 生年月日（YYYY-MM-DD）から現在の満年齢を計算する。誕生日前なら1歳引く
+function calcAge(birthDateStr) {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hasHadBirthdayThisYear = (today.getMonth() > birth.getMonth()) ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hasHadBirthdayThisYear) age--;
+  return age;
+}
+
 function buildAdminStaffCard(s) {
   const session = getSession();
   const isSelf = session && s.id === session.staffId;
@@ -1163,8 +1176,9 @@ function buildAdminStaffCard(s) {
           <input type="text" class="staff-hometown" value="${escapeHtml(s.hometown || '')}">
         </div>
         <div class="staff-field">
-          <label>年齢</label>
-          <input type="number" class="staff-age" value="${s.age ?? ''}" min="0">
+          <label>生年月日（年齢は自動算出）</label>
+          <input type="date" class="staff-birthdate" value="${escapeHtml(s.birthDate || '')}">
+          <span class="staff-age-display" style="font-size:12px;color:var(--gray);margin-left:6px">${calcAge(s.birthDate) != null ? calcAge(s.birthDate) + '歳' : ''}</span>
         </div>
         <div class="staff-field">
           <label>インボイス登録番号（Tから始まる番号。登録していれば）</label>
@@ -1179,6 +1193,14 @@ function buildAdminStaffCard(s) {
     <div class="staff-card-footer">
       <button type="button" class="btn-row-delete" ${isSelf ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>このスタッフを削除</button>
     </div>`;
+
+  // 生年月日を変更したら表示中の年齢も即時更新
+  const birthdateInput = card.querySelector('.staff-birthdate');
+  const ageDisplay = card.querySelector('.staff-age-display');
+  birthdateInput.addEventListener('change', () => {
+    const age = calcAge(birthdateInput.value);
+    ageDisplay.textContent = age != null ? age + '歳' : '';
+  });
 
   // PIN表示トグル
   const pinInput = card.querySelector('.staff-pin');
@@ -1265,7 +1287,7 @@ async function saveAdminStaff() {
       workSchedule: card.querySelector('.staff-work-schedule').value.trim(),
       otherJob: card.querySelector('.staff-other-job').value.trim(),
       hometown: card.querySelector('.staff-hometown').value.trim(),
-      age: card.querySelector('.staff-age').value === '' ? null : Number(card.querySelector('.staff-age').value),
+      birthDate: card.querySelector('.staff-birthdate').value || null,
       invoiceNumber: card.querySelector('.staff-invoice-number').value.trim(),
       commissionRateOverride: card.querySelector('.staff-commission-override').value === '' ? null : Number(card.querySelector('.staff-commission-override').value) / 100,
     };
