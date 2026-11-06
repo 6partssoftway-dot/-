@@ -615,6 +615,7 @@
   <div style="text-align:center;border-bottom:3px solid #1a4a8a;padding-bottom:12px;margin-bottom:16px;">
     <div style="font-size:20px;font-weight:700;color:#1a4a8a;">領収書 兼 作業報告書控え</div>
     <div style="font-size:12px;color:#4a5568;margin-top:4px;">洗濯機修理センター</div>
+    <div id="rtInvoiceNumber" style="font-size:11px;color:#4a5568;margin-top:2px;"></div>
   </div>
   <div id="rtMeta" style="font-size:12px;line-height:1.9;margin-bottom:14px;"></div>
   <table id="rtTable" style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;"></table>
@@ -637,6 +638,7 @@
 <script>
 // ===== 認証（PINログイン・セッション管理）=====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjdpG_7c9tAHVQWuR-yw3SI44L1N8qMFj4mz2HLUVDh-LiXuCV8GQSL-AIEzClInBG-Q/exec';
+const COMPANY_INVOICE_NUMBER = 'T9810649189169'; // 洗濯機修理センター（川口 祥）のインボイス登録番号。担当者が自分の登録番号を持っていればそちらを優先表示する
 const SESSION_KEY = 'swc_session';
 
 function getSession() {
@@ -1033,7 +1035,34 @@ async function loadAdminStaff() {
     } catch (e) { pendingLineUsersCache = []; }
     const list = document.getElementById('adminStaffList');
     list.innerHTML = '';
-    result.staff.forEach(s => list.appendChild(buildAdminStaffCard(s)));
+    // 担当都道府県（先頭の1つ）ごとにグループ化して表示する。複数県を担当する場合は先頭の県の
+    // グループに表示し、カード内に残りの県も分かるようにする（カードを複製すると保存時に
+    // 二重送信になってしまうため、表示上のグループ分けのみ）。
+    const groups = {};
+    const unassigned = [];
+    result.staff.forEach(s => {
+      const prefs = Array.isArray(s.prefectures) ? s.prefectures : [];
+      if (prefs.length === 0) { unassigned.push(s); return; }
+      const key = prefs[0];
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    });
+    PREFECTURES.filter(p => groups[p]).forEach(pref => {
+      const header = document.createElement('div');
+      header.className = 'section-title';
+      header.style.marginTop = '14px';
+      header.textContent = `【${pref}】`;
+      list.appendChild(header);
+      groups[pref].forEach(s => list.appendChild(buildAdminStaffCard(s)));
+    });
+    if (unassigned.length > 0) {
+      const header = document.createElement('div');
+      header.className = 'section-title';
+      header.style.marginTop = '14px';
+      header.textContent = '【担当都道府県 未設定】';
+      list.appendChild(header);
+      unassigned.forEach(s => list.appendChild(buildAdminStaffCard(s)));
+    }
   } catch (err) {
     errEl.textContent = 'スタッフ情報の取得に失敗しました: ' + err.message;
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
@@ -1051,6 +1080,7 @@ function buildAdminStaffCard(s) {
   card.innerHTML = `
     <div class="staff-card-header">
       <strong>${escapeHtml(s.name || '（新規スタッフ）')}</strong>
+      ${prefectures.length > 1 ? `<span class="staff-self-badge" style="color:var(--gray)">ほか${prefectures.length - 1}県も担当（${prefectures.slice(1).map(escapeHtml).join('・')}）</span>` : ''}
       ${isSelf ? '<span class="staff-self-badge">あなたのアカウント（役割・有効・削除は固定）</span>' : ''}
     </div>
     <div class="staff-field-grid">
@@ -1107,6 +1137,43 @@ function buildAdminStaffCard(s) {
             ${pendingLineUsersCache.map(u => `<option value="${escapeHtml(u.userId)}">${escapeHtml(u.displayName)}</option>`).join('')}
           </select>
         `}
+      </div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:8px">詳細情報（任意）</div>
+      <div class="staff-field-grid">
+        <div class="staff-field">
+          <label>住所</label>
+          <input type="text" class="staff-address" value="${escapeHtml(s.address || '')}">
+        </div>
+        <div class="staff-field">
+          <label>電話番号</label>
+          <input type="tel" class="staff-phone" value="${escapeHtml(s.phone || '')}">
+        </div>
+        <div class="staff-field">
+          <label>出勤目安（例：週1、土日中心）</label>
+          <input type="text" class="staff-work-schedule" value="${escapeHtml(s.workSchedule || '')}">
+        </div>
+        <div class="staff-field">
+          <label>現在の他の職業</label>
+          <input type="text" class="staff-other-job" value="${escapeHtml(s.otherJob || '')}">
+        </div>
+        <div class="staff-field">
+          <label>出身地</label>
+          <input type="text" class="staff-hometown" value="${escapeHtml(s.hometown || '')}">
+        </div>
+        <div class="staff-field">
+          <label>年齢</label>
+          <input type="number" class="staff-age" value="${s.age ?? ''}" min="0">
+        </div>
+        <div class="staff-field">
+          <label>インボイス登録番号（Tから始まる番号。登録していれば）</label>
+          <input type="text" class="staff-invoice-number" value="${escapeHtml(s.invoiceNumber || '')}" placeholder="T1234567890123">
+        </div>
+        <div class="staff-field">
+          <label>歩合率を固定で上書き（%。空欄なら標準の段階制）</label>
+          <input type="number" class="staff-commission-override" value="${s.commissionRateOverride != null ? Math.round(s.commissionRateOverride * 100) : ''}" placeholder="例：60" min="0" max="100">
+        </div>
       </div>
     </div>
     <div class="staff-card-footer">
@@ -1193,6 +1260,14 @@ async function saveAdminStaff() {
       active: card.querySelector('.staff-active').checked,
       prefectures: card._getPrefectures(),
       lineUserId,
+      address: card.querySelector('.staff-address').value.trim(),
+      phone: card.querySelector('.staff-phone').value.trim(),
+      workSchedule: card.querySelector('.staff-work-schedule').value.trim(),
+      otherJob: card.querySelector('.staff-other-job').value.trim(),
+      hometown: card.querySelector('.staff-hometown').value.trim(),
+      age: card.querySelector('.staff-age').value === '' ? null : Number(card.querySelector('.staff-age').value),
+      invoiceNumber: card.querySelector('.staff-invoice-number').value.trim(),
+      commissionRateOverride: card.querySelector('.staff-commission-override').value === '' ? null : Number(card.querySelector('.staff-commission-override').value) / 100,
     };
   });
 
@@ -1610,7 +1685,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   try {
     const result = await gasCall('login', { email, pin });
     const expiresAt = Date.now() + 12 * 60 * 60 * 1000; // 12時間
-    const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, prefectures: result.prefectures || [], expiresAt };
+    const session = { token: result.session, staffId: result.staffId, name: result.name, role: result.role, prefectures: result.prefectures || [], invoiceNumber: result.invoiceNumber || '', expiresAt };
     saveSession(session);
     document.getElementById('pinInput').value = '';
     showCustomerSelectScreen(session);
@@ -1892,6 +1967,7 @@ function collectData() {
     orderSource: document.getElementById('orderSource').value,
     contactMethod: document.getElementById('contactMethod').value,
     staffName: document.getElementById('staffName').value,
+    staffInvoiceNumber: getSession()?.invoiceNumber || '',
     caseName: `${name}様 ${visitDate} 洗濯機修理`,
     subtotal, tax, total,
     netAmount: calcNetAmount(payment, total),
@@ -1959,6 +2035,7 @@ function escapeHtml(s) {
 }
 
 function fillReceiptTemplate(d) {
+  document.getElementById('rtInvoiceNumber').textContent = '登録番号：' + (d.staffInvoiceNumber || COMPANY_INVOICE_NUMBER);
   document.getElementById('rtMeta').innerHTML = `
     <div>訪問日：${escapeHtml(d.visitDate || '-')}　担当：${escapeHtml(d.staffName || '-')}</div>
     <div>お客様名：${escapeHtml(d.name)} 様</div>
