@@ -362,7 +362,8 @@
           <span>保証料金（年額・税抜）：<strong id="warrantyPriceDisp">-</strong></span>
         </div>
         <p style="font-size:11px;color:var(--gray);margin-top:8px">
-          内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。クリーニング（洗濯槽・乾燥経路）は対象外。買替・下取りは対象外。修理不可と判断された故障は対応できず、その場合の返金もございません。対象外：落下・水没・設置不良・明らかな誤使用。
+          ※通常保証（無料）は、本日と同一の症状に限り作業日から1週間以内の再発のみ対象です。<br>
+          延長保証（有料）の内容：期間は加入日から1年。修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引、年2回まで・1回2万円相当まで）。クリーニング（洗濯槽・乾燥経路）は対象外。買替・下取りは対象外。修理不可と判断された故障は対応できず、その場合の返金もございません。対象外：落下・水没・設置不良・明らかな誤使用。
         </p>
       </div>
     </div>
@@ -371,22 +372,26 @@
     <div class="section">
       <div class="section-title">【同意事項】</div>
       <div class="consent-box">
-        <p>以下の4項目をお読みの上、それぞれチェックをお願いします。</p>
+        <p>以下の5項目をお読みの上、それぞれチェックをお願いします。</p>
         <label class="consent-item">
           <input type="checkbox" id="consent1" required>
-          <span>◆ 修理作業は、洗濯機の使用状況・年式・症状に応じた応急的または部分的な対応であり、<strong>恒久的な修復や動作保証を目的とするものではない</strong>ことを了承しました。</span>
+          <span>◆ 本日の修理作業は、洗濯機の使用年数・年式・症状の状態に応じた応急的または部分的な対応です。経年劣化が進んだ機器については、今回の修理によって<strong>恒久的に不具合が解消されることや、今後すべての動作を保証するものではない</strong>ことを了承しました。</span>
         </label>
         <label class="consent-item">
           <input type="checkbox" id="consent2" required>
-          <span>◆ 使用年数の経過・部品の劣化・構造上の問題に起因して、作業後に再発や別の不具合が生じる可能性があり、<strong>これらに関する損害等について当社は責任を負いかねる</strong>ことを理解しました。</span>
+          <span>◆ 洗濯機は使用年数の経過・部品の劣化・構造上の問題により、今回の修理箇所以外から新たな不具合が生じたり、時間の経過とともに別の症状が現れることがあります。これらは機器自体の経年的な要因によるものであり、<strong>当社の作業に起因するものではないため、これらに関する損害等について当社は責任を負いかねる</strong>ことを理解しました。</span>
         </label>
         <label class="consent-item">
           <input type="checkbox" id="consent3" required>
-          <span>◆ 本サービスはお客様の明確なご依頼に基づく訪問・作業であり、<strong>特定商取引法の訪問販売には該当せず、クーリング・オフ制度の適用対象外</strong>であることを確認しました。</span>
+          <span>◆ 本サービスはお客様ご自身の明確なご依頼・ご予約に基づく訪問・作業であり、事業者側から一方的に訪問して契約を迫るような特定商取引法上の訪問販売には該当しません。そのため、<strong>クーリング・オフ制度（契約後一定期間内に無条件で解除できる制度）の適用対象外</strong>であることを確認しました。</span>
         </label>
         <label class="consent-item">
           <input type="checkbox" id="consent4" required>
-          <span>◆ 修理によって症状が改善されても、使用環境・機種特性によって持続性に差が生じる可能性があり、<strong>新品同様の性能回復を保証するものではない</strong>ことを理解しました。</span>
+          <span>◆ 修理によって症状が改善された場合でも、その後の使用環境・洗濯の頻度・機種の特性などによって効果の持続期間には差が生じることがあり、<strong>新品同様の性能に回復することを保証するものではない</strong>ことを理解しました。</span>
+        </label>
+        <label class="consent-item">
+          <input type="checkbox" id="consent5" required>
+          <span>◆ 本日行った修理内容について、<strong>作業日から1週間以内に限り、本日と同一の症状が再発した場合は無料で再度対応</strong>します（これを「通常保証」とします）。ただし、1週間を超えてからの再発、今回とは異なる症状、経年劣化・部品の消耗による不具合、および水漏れ等によって家財・建物など周辺に生じた二次的な損害については、通常保証および当社の責任の対象外であることを理解しました。</span>
         </label>
       </div>
     </div>
@@ -1211,6 +1216,13 @@ function buildAdminStaffCard(s) {
           <label>歩合率を固定で上書き（%。空欄なら標準の段階制）</label>
           <input type="number" class="staff-commission-override" value="${s.commissionRateOverride != null ? Math.round(s.commissionRateOverride * 100) : ''}" placeholder="例：60" min="0" max="100">
         </div>
+        <div class="staff-field">
+          <label>部品の手配</label>
+          <label class="no-email-check" style="margin-top:6px">
+            <input type="checkbox" class="staff-self-supplied-parts" ${s.selfSuppliedParts ? 'checked' : ''}>
+            部品は会社支給ではなく自分で手配する（歩合給＝歩合率×(税抜売上－部品代)＋部品代で計算）
+          </label>
+        </div>
       </div>
     </div>
     <div class="staff-card-footer">
@@ -1313,6 +1325,7 @@ async function saveAdminStaff() {
       birthDate: card.querySelector('.staff-birthdate').value || null,
       invoiceNumber: card.querySelector('.staff-invoice-number').value.trim(),
       commissionRateOverride: card.querySelector('.staff-commission-override').value === '' ? null : Number(card.querySelector('.staff-commission-override').value) / 100,
+      selfSuppliedParts: card.querySelector('.staff-self-supplied-parts').checked,
     };
   });
 
@@ -2156,7 +2169,11 @@ function fillWarrantyCertTemplate(d, endDate) {
     <div>保証料金（年額・税抜）：¥${(WARRANTY_PRICES[d.washType] || 0).toLocaleString()}</div>
   `;
   document.getElementById('wcTerms').innerHTML = `
-    <strong>保証内容</strong><br>
+    <strong>通常保証（無料・全お客様共通）</strong><br>
+    ・本日と同一の症状に限り、作業日から1週間以内の再発は無料で再対応します<br>
+    ・この延長保証は、通常保証の期間・範囲を下記の通り延長するものです<br>
+    <br>
+    <strong>延長保証の内容（本書・有料）</strong><br>
     ・修理箇所以外の故障も出張費・技術料無料（部品代は実費または2割引）<br>
     ・ご利用は年2回まで、1回あたり2万円相当まで<br>
     <br>
