@@ -462,6 +462,11 @@
 
     <div class="submit-area">
       <p id="formError" class="error-msg" style="margin-bottom:8px"></p>
+      <div id="cannotRepairConfirmBox" hidden class="consent-box" style="background:#fff3f0;border-color:#e8a8a0;margin-bottom:10px">
+        <p style="margin:0 0 10px">修理不可として登録します。よろしいですか？（お客様の同意・署名は不要です）</p>
+        <button type="button" class="btn-submit" id="cannotRepairConfirmYesBtn">はい、登録する</button>
+        <button type="button" class="btn-clear" id="cannotRepairConfirmNoBtn" style="margin-left:8px">キャンセル</button>
+      </div>
       <button type="submit" class="btn-submit" id="submitBtn">同意して送信する</button>
       <p style="font-size:11px;color:#aaa;margin-top:10px">送信後、領収書兼控えをお渡しします（メール登録がある場合はメールでも送付されます）</p>
     </div>
@@ -1924,6 +1929,7 @@ cannotRepairCheckEl.addEventListener('change', () => {
   document.getElementById('consentSection').hidden = cannotRepair;
   document.getElementById('signatureBlock').hidden = cannotRepair;
   if (cannotRepair) clearSignature();
+  document.getElementById('cannotRepairConfirmBox').hidden = true;
   document.getElementById('submitBtn').textContent = cannotRepair ? '内容を確認して登録する' : '同意して送信する';
 });
 
@@ -2354,13 +2360,14 @@ function fillFormFromCalendarEvent(ev) {
 }
 
 // ===== SUBMIT =====
+// 修理不可の最終確認は、PWAのスタンドアロン表示では window.confirm() が機能しない場合があるため、
+// ネイティブのconfirm()ではなく画面内の確認ボックス（はい／キャンセル）で行う。
 document.getElementById('repairForm').addEventListener('submit', async e => {
   e.preventDefault();
   const errEl = document.getElementById('formError');
   errEl.textContent = '';
   const cannotRepair = cannotRepairCheckEl.checked;
   if (!cannotRepair && !hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
-  if (cannotRepair && !confirm('修理不可として登録します。よろしいですか？')) { return; }
 
   const noEmail = noEmailEl.checked;
   if (!noEmail && !getEmailValue()) {
@@ -2377,6 +2384,23 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     return;
   }
 
+  if (cannotRepair) {
+    document.getElementById('cannotRepairConfirmBox').hidden = false;
+    return;
+  }
+  await performSubmit();
+});
+
+document.getElementById('cannotRepairConfirmYesBtn').addEventListener('click', async () => {
+  document.getElementById('cannotRepairConfirmBox').hidden = true;
+  await performSubmit();
+});
+document.getElementById('cannotRepairConfirmNoBtn').addEventListener('click', () => {
+  document.getElementById('cannotRepairConfirmBox').hidden = true;
+});
+
+async function performSubmit() {
+  const errEl = document.getElementById('formError');
   const data = collectData();
   const btn = document.getElementById('submitBtn');
   btn.disabled=true; btn.textContent='送信中...';
@@ -2453,7 +2477,7 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     }
     btn.disabled=false; btn.textContent = cannotRepairCheckEl.checked ? '内容を確認して登録する' : '同意して送信する';
   }
-});
+}
 
 // ===== PWA: Service Worker登録 =====
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
