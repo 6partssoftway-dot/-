@@ -369,7 +369,7 @@
     </div>
 
     <!-- 同意事項 -->
-    <div class="section">
+    <div class="section" id="consentSection">
       <div class="section-title">【同意事項】</div>
       <div class="consent-box">
         <p>以下の5項目をお読みの上、それぞれチェックをお願いします。</p>
@@ -447,15 +447,17 @@
           </select>
         </div>
       </div>
-      <p style="font-size:12px;color:var(--gray);margin-bottom:8px">枠内に指またはペンで署名してください</p>
-      <div class="signature-wrap">
-        <canvas id="signatureCanvas"></canvas>
+      <div id="signatureBlock">
+        <p style="font-size:12px;color:var(--gray);margin-bottom:8px">枠内に指またはペンで署名してください</p>
+        <div class="signature-wrap">
+          <canvas id="signatureCanvas"></canvas>
+        </div>
+        <div class="sig-actions">
+          <button type="button" class="btn-clear" onclick="clearSignature()">✕ 書き直す</button>
+          <span id="sigStatus" style="font-size:12px;color:#1a7a4a"></span>
+        </div>
+        <p class="sig-hint">※ 署名は同意の意思表示として記録されます（送信日時・端末情報を含む）</p>
       </div>
-      <div class="sig-actions">
-        <button type="button" class="btn-clear" onclick="clearSignature()">✕ 書き直す</button>
-        <span id="sigStatus" style="font-size:12px;color:#1a7a4a"></span>
-      </div>
-      <p class="sig-hint">※ 署名は同意の意思表示として記録されます（送信日時・端末情報を含む）</p>
     </div>
 
     <div class="submit-area">
@@ -749,7 +751,7 @@ async function loadTodaysCustomerList() {
       listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">本日の予定は見つかりませんでした。</p>';
     } else {
       listEl.innerHTML = events.map((ev, idx) => `
-        <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:8px;padding:12px 14px">
+        <button type="button" class="btn-add-row calendar-event-btn" data-idx="${idx}" style="display:block;width:100%;text-align:left;margin-top:0;margin-bottom:8px;padding:14px 16px;font-size:16px">
           ${escapeHtml(ev.title || '（無題の予定）')}
         </button>`
       ).join('');
@@ -788,6 +790,10 @@ function showMainScreen(session) {
   document.getElementById('mainPage').hidden = false;
   document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   document.getElementById('adminOpenBtn').hidden = session.role !== 'admin';
+  // 署名欄は、お客様選択画面を経由するためページ読み込み時点ではmainPageが非表示（幅0）になっており、
+  // その時点で1回だけ実行されるresizeCanvas()ではキャンバスの内部サイズが0のままになってしまう。
+  // mainPageが実際に表示されるこのタイミングで必ず再計算する。
+  resizeCanvas();
   const staffNameEl = document.getElementById('staffName');
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
   loadPriceListFromServer(session.token);
@@ -1913,6 +1919,12 @@ cannotRepairCheckEl.addEventListener('change', () => {
     warrantyOptInCheckEl.checked = false;
     warrantyOptInCheckEl.dispatchEvent(new Event('change'));
   }
+  // 修理不可（作業なし）の場合は、お客様に同意事項への同意や署名をいただかない。
+  // hiddenにした要素はネイティブのフォーム入力チェック対象から外れるため、required属性はそのままでよい。
+  document.getElementById('consentSection').hidden = cannotRepair;
+  document.getElementById('signatureBlock').hidden = cannotRepair;
+  if (cannotRepair) clearSignature();
+  document.getElementById('submitBtn').textContent = cannotRepair ? '内容を確認して登録する' : '同意して送信する';
 });
 
 // ===== 延長保証（料金表示・加入欄の表示切替） =====
@@ -2346,7 +2358,9 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   e.preventDefault();
   const errEl = document.getElementById('formError');
   errEl.textContent = '';
-  if (!hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
+  const cannotRepair = cannotRepairCheckEl.checked;
+  if (!cannotRepair && !hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
+  if (cannotRepair && !confirm('修理不可として登録します。よろしいですか？')) { return; }
 
   const noEmail = noEmailEl.checked;
   if (!noEmail && !getEmailValue()) {
@@ -2437,7 +2451,7 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
     } else {
       errEl.textContent='送信に失敗しました。担当者にお声がけください。（'+notionErr+')';
     }
-    btn.disabled=false; btn.textContent='同意して送信する';
+    btn.disabled=false; btn.textContent = cannotRepairCheckEl.checked ? '内容を確認して登録する' : '同意して送信する';
   }
 });
 
