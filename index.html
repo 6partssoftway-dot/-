@@ -1925,9 +1925,15 @@ cannotRepairCheckEl.addEventListener('change', () => {
     warrantyOptInCheckEl.dispatchEvent(new Event('change'));
   }
   // 修理不可（作業なし）の場合は、お客様に同意事項への同意や署名をいただかない。
-  // hiddenにした要素はネイティブのフォーム入力チェック対象から外れるため、required属性はそのままでよい。
+  // 注意：hidden属性で非表示にしても、Chromeはrequired属性が付いたチェックボックスを
+  // フォーム検証から除外してくれない（非表示なのでブラウザの警告も表示されず、
+  // 送信ボタンを押しても何も起きないように見える）。そのため非表示にする際はrequiredも外す。
   document.getElementById('consentSection').hidden = cannotRepair;
   document.getElementById('signatureBlock').hidden = cannotRepair;
+  document.querySelectorAll('#consentSection input[type="checkbox"]').forEach(cb => {
+    cb.required = !cannotRepair;
+    if (cannotRepair) cb.checked = false;
+  });
   if (cannotRepair) clearSignature();
   document.getElementById('cannotRepairConfirmBox').hidden = true;
   document.getElementById('submitBtn').textContent = cannotRepair ? '内容を確認して登録する' : '同意して送信する';
