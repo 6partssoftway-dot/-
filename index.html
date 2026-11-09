@@ -2414,7 +2414,7 @@ async function performSubmit() {
   let notionOk = false, emailOk = false, notionErr = '', notionErrCode = '', emailErr = '', pdfOk = false, warrantyResult = null, warrantyUsageResult = null;
 
   const isWarrantyUsageVisit = data.warrantyUsage === '1回目' || data.warrantyUsage === '2回目';
-  if (!isWarrantyUsageVisit) {
+  if (!isWarrantyUsageVisit && data.repairPossible) {
     try { await buildAndStoreReceipt(data); pdfOk = true; } catch(err) { console.warn('PDF生成失敗:', err); }
   }
   if (data.warrantyOptIn) {
@@ -2448,7 +2448,9 @@ async function performSubmit() {
     document.getElementById('successScreen').style.display='block';
     document.getElementById('downloadPdfBtn').style.display = pdfOk ? 'inline-block' : 'none';
     const msgEl = document.getElementById('successMsg');
-    if (isWarrantyUsageVisit) {
+    if (!data.repairPossible) {
+      msgEl.textContent = '修理不可として登録しました。お客様への送付物はありません。';
+    } else if (isWarrantyUsageVisit) {
       msgEl.textContent = '延長保証利用のため、領収書は発行していません。';
     } else if (noEmail) {
       msgEl.textContent = 'メールアドレスのご登録がないため、下の「領収書PDFをダウンロード」ボタンからPDFを保存し、お客様にお渡し・共有してください。';
