@@ -231,7 +231,7 @@
           <input type="text" id="staffName" placeholder="担当者">
           <label class="no-email-check" id="reviewOptInWrap">
             <input type="checkbox" id="reviewOptIn">
-            口コミ投稿のお願いメールを送ってもよい（領収書メールの30分後に送信）
+            口コミ投稿のお願いメールを送ってもよい（領収書メールと同時に送信）
           </label>
         </div>
         <div class="field" id="visitPrefectureWrap" hidden>
@@ -269,8 +269,8 @@
           <input type="text" id="errorOther" placeholder="その他エラー（自由入力）" style="border:1px solid var(--border);border-radius:3px;padding:6px 10px;font-size:13px;width:100%;margin-top:6px">
         </div>
         <div class="field">
-          <label>受注元</label>
-          <select id="orderSource">
+          <label>受注元 <span class="req">*</span></label>
+          <select id="orderSource" required>
             <option value="">選択してください</option>
             <option>S（自社）</option><option>P（プリベント）</option>
             <option>K（暮らしのサポート）</option><option>M（霧島MED）</option>
@@ -765,9 +765,9 @@ async function loadTodaysCustomerList() {
         </button>`
       ).join('');
       listEl.querySelectorAll('.calendar-event-btn').forEach(b => {
-        b.addEventListener('click', () => {
+        b.addEventListener('click', async () => {
           const ev = events[Number(b.dataset.idx)];
-          showMainScreen(session);
+          await showMainScreen(session);
           fillFormFromCalendarEvent(ev);
         });
       });
@@ -791,7 +791,7 @@ document.getElementById('selectLogoutBtn').addEventListener('click', () => {
   showLoginScreen();
 });
 
-function showMainScreen(session) {
+async function showMainScreen(session) {
   document.getElementById('loginScreen').hidden = true;
   document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('adminScreen').hidden = true;
@@ -805,9 +805,13 @@ function showMainScreen(session) {
   resizeCanvas();
   const staffNameEl = document.getElementById('staffName');
   if (staffNameEl && !staffNameEl.value) staffNameEl.value = session.name;
-  loadPriceListFromServer(session.token);
-  loadOrderSourcesFromServer(session.token);
   setupVisitPrefectureField(session);
+  // 受注元リストの読み込み完了前にカレンダーからの自動入力（fillFormFromCalendarEvent）が走ると、
+  // 読み込み完了時に選択内容が上書きされて消えてしまうため、ここで読み込み完了を待つ。
+  await Promise.all([
+    loadPriceListFromServer(session.token),
+    loadOrderSourcesFromServer(session.token)
+  ]);
 }
 
 // 担当都道府県が2つ以上のスタッフだけ、案件ごとに訪問先を選ばせる（1つだけの場合は自動設定・非表示）
