@@ -304,7 +304,11 @@
       <div class="total-area" style="flex-direction:column;align-items:flex-end;gap:6px">
         <span style="font-size:13px;color:var(--gray)">小計（税抜）: <strong id="subtotalDisp">¥0</strong></span>
         <span style="font-size:13px;color:var(--gray)">消費税（10%）: <strong id="taxDisp">¥0</strong></span>
-        <span class="total">合計（税込）: <strong id="totalDisp">¥0</strong></span>
+        <span class="total">合計（税込）:
+          <strong id="totalDisp" onclick="startTaxIncludedOverride()" style="cursor:pointer;text-decoration:underline dotted" title="クリックすると、稀に税込ちょうどの金額で案内する場合用に、税込金額を直接指定できます">¥0</strong>
+          <input type="number" id="totalOverrideInput" min="0" style="display:none;width:110px;margin-left:4px;font-size:14px" placeholder="税込金額" onchange="applyTaxIncludedOverride()">
+          <button type="button" id="totalOverrideClearBtn" onclick="clearTaxIncludedOverride()" style="display:none;font-size:11px;margin-left:6px;padding:2px 8px">税抜に戻す</button>
+        </span>
       </div>
       <div style="margin-top:12px" class="field">
         <label>お支払い方法</label>
@@ -1224,6 +1228,10 @@ function buildAdminStaffCard(s) {
           <input type="text" class="staff-invoice-number" value="${escapeHtml(s.invoiceNumber || '')}" placeholder="T1234567890123">
         </div>
         <div class="staff-field">
+          <label>振込先口座（週次決算のLINEに記載されます）</label>
+          <input type="text" class="staff-bank-account" value="${escapeHtml(s.bankAccount || '')}" placeholder="例：〇〇銀行 △△支店 普通 1234567 ヤマダ タロウ">
+        </div>
+        <div class="staff-field">
           <label>歩合率を固定で上書き（%。空欄なら標準の段階制）</label>
           <input type="number" class="staff-commission-override" value="${s.commissionRateOverride != null ? Math.round(s.commissionRateOverride * 100) : ''}" placeholder="例：60" min="0" max="100">
         </div>
@@ -1335,6 +1343,7 @@ async function saveAdminStaff() {
       hometown: card.querySelector('.staff-hometown').value.trim(),
       birthDate: card.querySelector('.staff-birthdate').value || null,
       invoiceNumber: card.querySelector('.staff-invoice-number').value.trim(),
+      bankAccount: card.querySelector('.staff-bank-account').value.trim(),
       commissionRateOverride: card.querySelector('.staff-commission-override').value === '' ? null : Number(card.querySelector('.staff-commission-override').value) / 100,
       selfSuppliedParts: card.querySelector('.staff-self-supplied-parts').checked,
     };
@@ -1824,11 +1833,11 @@ function buildTable() {
     if (item.discount) tr.classList.add('discount-row');
     const priceCell = item.price !== null
       ? `<span>${item.discount?'▲':''}${item.price.toLocaleString()}円</span>`
-      : `<input type="number" class="price-input custom-price" data-id="${item.id}" placeholder="0" min="0" oninput="calcTotal()">円`;
+      : `<input type="number" class="price-input custom-price" data-id="${item.id}" placeholder="0" min="0" oninput="itemChanged()">円`;
     tr.innerHTML = `
       <td class="check-cell"><input type="checkbox" class="item-check" data-id="${item.id}"
         data-price="${item.price??0}" data-discount="${!!item.discount}"
-        onchange="calcTotal();this.closest('tr').classList.toggle('selected',this.checked)"></td>
+        onchange="itemChanged();this.closest('tr').classList.toggle('selected',this.checked)"></td>
       <td>${item.label}</td>
       <td><input type="text" class="notes-input" data-id="${item.id}" placeholder="${item.note}"></td>
       <td>${priceCell}</td>`;
@@ -1836,7 +1845,23 @@ function buildTable() {
   });
 }
 
+// 稀に税込ちょうどの金額で案内する案件用：合計（税込）をクリックして直接指定した値（nullなら通常の税抜計算）
+let taxIncludedOverride = null;
+
+// 項目の選択・金額が変わったときに呼ぶ。税込ちょうど指定は項目構成が変わると合わなくなるため解除する
+function itemChanged() {
+  taxIncludedOverride = null;
+  const input = document.getElementById('totalOverrideInput');
+  if (input) {
+    input.style.display = 'none';
+    document.getElementById('totalDisp').style.display = '';
+    document.getElementById('totalOverrideClearBtn').style.display = 'none';
+  }
+  calcTotal();
+}
+
 function calcTotal() {
+  // 基本は税抜で入力し、消費税額・税込合計は通常通り計算する。
   let subtotal = 0;
   document.querySelectorAll('.item-check:checked').forEach(cb => {
     const id = cb.dataset.id;
@@ -1846,12 +1871,47 @@ function calcTotal() {
     if (isDiscount) price = -Math.abs(price);
     subtotal += price;
   });
-  const tax = Math.round(subtotal * 0.1);
-  const total = subtotal + tax;
+  let tax, total;
+  if (taxIncludedOverride != null) {
+    // 稀に税込ちょうどの金額を指定する場合：指定された税込金額から税抜・消費税額を逆算する
+    // （項目ごとの丸め誤差で税込合計が目標額からずれる問題を避けるため）
+    total = taxIncludedOverride;
+    subtotal = Math.round(total / 1.1);
+    tax = total - subtotal;
+  } else {
+    tax = Math.round(subtotal * 0.1);
+    total = subtotal + tax;
+  }
   document.getElementById('subtotalDisp').textContent = '¥' + subtotal.toLocaleString();
   document.getElementById('taxDisp').textContent = '¥' + tax.toLocaleString();
   document.getElementById('totalDisp').textContent = '¥' + total.toLocaleString();
   return {subtotal, tax, total};
+}
+
+function startTaxIncludedOverride() {
+  const { total } = calcTotal();
+  const input = document.getElementById('totalOverrideInput');
+  input.value = taxIncludedOverride != null ? taxIncludedOverride : total;
+  document.getElementById('totalDisp').style.display = 'none';
+  input.style.display = 'inline-block';
+  document.getElementById('totalOverrideClearBtn').style.display = 'inline-block';
+  input.focus();
+  input.select();
+}
+
+function applyTaxIncludedOverride() {
+  const input = document.getElementById('totalOverrideInput');
+  const v = parseInt(input.value || 0);
+  taxIncludedOverride = v > 0 ? v : null;
+  calcTotal();
+}
+
+function clearTaxIncludedOverride() {
+  taxIncludedOverride = null;
+  document.getElementById('totalOverrideInput').style.display = 'none';
+  document.getElementById('totalDisp').style.display = '';
+  document.getElementById('totalOverrideClearBtn').style.display = 'none';
+  calcTotal();
 }
 
 // ===== SIGNATURE =====
@@ -1916,7 +1976,7 @@ cannotRepairCheckEl.addEventListener('change', () => {
       cb.checked = false;
       cb.closest('tr').classList.remove('selected');
     });
-    calcTotal();
+    itemChanged();
   }
   // 修理不可の場合は延長保証に加入できない（加入条件：当店で修理し動作確認済み）
   document.getElementById('warrantySection').hidden = cannotRepair;
@@ -1979,7 +2039,7 @@ function syncWarrantyLineItem() {
       document.getElementById('workTableBody').appendChild(tr);
     }
   }
-  calcTotal();
+  itemChanged();
 }
 
 warrantyOptInCheckEl.addEventListener('change', () => {
@@ -2015,7 +2075,9 @@ function collectData() {
   if (otherError) errors.push('その他:'+otherError);
 
   const workItems = [];
-  let subtotal = 0;
+  // 繁忙期対応加算・年末料金加算は、歩合計算の対象から外して全額スタッフに渡すため、合計を別に記録する
+  // （この2項目は税抜で入力されるため、税込に換算してから合計する。歩合計算で使う売上total自体が税込のため単位を揃える）
+  let staffBonusAmount = 0;
   document.querySelectorAll('.item-check:checked').forEach(cb => {
     const id = cb.dataset.id;
     // 延長保証の料金行はITEMSに存在しない特別な行なので、ラベルはdata属性から直接取る
@@ -2025,11 +2087,11 @@ function collectData() {
     const isDiscount = cb.dataset.discount==='true';
     let price = custom ? parseInt(custom.value||0) : parseInt(cb.dataset.price);
     if (isDiscount) price = -Math.abs(price);
-    subtotal += price;
+    if (id === 'busy' || id === 'yearend') staffBonusAmount += Math.round(price * 1.1);
     workItems.push({name:label, note, price});
   });
-  const tax = Math.round(subtotal * 0.1);
-  const total = subtotal + tax;
+  // 画面表示（calcTotal）と同じ税抜・消費税額・税込合計を使う（稀な税込ちょうど指定にも対応するため）
+  const { subtotal, tax, total } = calcTotal();
 
   const name = document.getElementById('name').value.trim();
   const visitDate = document.getElementById('visitDate').value;
@@ -2042,6 +2104,7 @@ function collectData() {
     washType: document.querySelector('input[name="washType"]:checked')?.value||'',
     symptom: document.getElementById('symptom').value,
     errors: errors.join(', '), workItems, total,
+    staffBonusAmount,
     payment,
     paymentStatus: document.getElementById('paymentStatus').value,
     paymentMonth: document.getElementById('paymentMonth').value,
@@ -2080,6 +2143,7 @@ async function sendToNotion(d) {
     subtotal:      d.subtotal,
     tax:           d.tax,
     total:         d.total,
+    staffBonusAmount: d.staffBonusAmount,
     netAmount:     d.netAmount,
     paymentStatus: d.paymentStatus,
     visitDate:     d.visitDate,
