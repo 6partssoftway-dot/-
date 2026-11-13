@@ -94,7 +94,7 @@
   #successScreen p { font-size:13px; color:var(--gray); line-height:1.7; }
   .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
   .btn-download:hover { opacity:.9; }
-  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} }
+  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} }
   /* login */
   .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
   .login-body { padding:28px 24px; }
@@ -1382,7 +1382,7 @@ async function saveAdminStaff() {
 let adminOrderSourcesBaseVersion = null;
 
 document.getElementById('addOrderSourceRowBtn').addEventListener('click', () => {
-  document.getElementById('adminOrderSourceList').appendChild(buildOrderSourceRow(''));
+  document.getElementById('adminOrderSourceList').appendChild(buildOrderSourceRow({}));
 });
 document.getElementById('saveOrderSourcesBtn').addEventListener('click', saveAdminOrderSources);
 
@@ -1404,12 +1404,38 @@ async function loadAdminOrderSources() {
   }
 }
 
-function buildOrderSourceRow(value) {
+function buildOrderSourceRow(item) {
+  item = item || {};
   const row = document.createElement('div');
-  row.className = 'order-source-row';
+  row.className = 'order-source-card staff-card';
   row.innerHTML = `
-    <input type="text" class="order-source-value" value="${escapeHtml(value || '')}" placeholder="例：S（自社）">
-    <button type="button" class="btn-row-delete">削除</button>`;
+    <div class="staff-card-header">
+      <strong>${escapeHtml(item.value || '（新規項目）')}</strong>
+    </div>
+    <div class="staff-field-grid">
+      <div class="staff-field">
+        <label>値（フォームの選択肢・略称）</label>
+        <input type="text" class="order-source-value" value="${escapeHtml(item.value || '')}" placeholder="例：S（自社）">
+      </div>
+      <div class="staff-field">
+        <label>正式名称</label>
+        <input type="text" class="order-source-official-name" value="${escapeHtml(item.officialName || '')}" placeholder="例：株式会社〇〇">
+      </div>
+      <div class="staff-field">
+        <label>住所</label>
+        <input type="text" class="order-source-address" value="${escapeHtml(item.address || '')}">
+      </div>
+      <div class="staff-field">
+        <label>メモ</label>
+        <input type="text" class="order-source-memo" value="${escapeHtml(item.memo || '')}">
+      </div>
+    </div>
+    <div class="staff-card-footer">
+      <button type="button" class="btn-row-delete">この受注元を削除</button>
+    </div>`;
+  row.querySelector('.order-source-value').addEventListener('input', e => {
+    row.querySelector('.staff-card-header strong').textContent = e.target.value || '（新規項目）';
+  });
   row.querySelector('.btn-row-delete').addEventListener('click', () => {
     const v = row.querySelector('.order-source-value').value || '（空欄）';
     if (confirm(`受注元「${v}」を削除します。よろしいですか？`)) {
@@ -1424,8 +1450,12 @@ async function saveAdminOrderSources() {
   const okEl = document.getElementById('orderSourceAdminSuccess');
   errEl.textContent = ''; okEl.textContent = '';
 
-  const items = [...document.querySelectorAll('#adminOrderSourceList .order-source-value')]
-    .map(el => el.value.trim());
+  const items = [...document.querySelectorAll('#adminOrderSourceList .order-source-card')].map(row => ({
+    value: row.querySelector('.order-source-value').value.trim(),
+    officialName: row.querySelector('.order-source-official-name').value.trim(),
+    address: row.querySelector('.order-source-address').value.trim(),
+    memo: row.querySelector('.order-source-memo').value.trim()
+  }));
 
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
@@ -1628,7 +1658,10 @@ async function loadOrderSourcesFromServer(sessionToken) {
       const sel = document.getElementById('orderSource');
       const current = sel.value;
       sel.innerHTML = '<option value="">選択してください</option>' +
-        result.items.map(v => `<option${v === current ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        result.items.map(it => {
+          const v = (it && typeof it === 'object') ? (it.value || '') : it;
+          return `<option${v === current ? ' selected' : ''}>${escapeHtml(v)}</option>`;
+        }).join('');
     }
   } catch (err) {
     console.warn('受注元の取得に失敗したため、内蔵の既定値を使用します:', err.message);
