@@ -2595,7 +2595,7 @@ async function performSubmit() {
       msgEl.textContent = '修理不可として登録しました。お客様への送付物はありません。';
     } else if (isWarrantyUsageVisit) {
       msgEl.textContent = '延長保証利用のため、領収書は発行していません。';
-    } else if (noEmail) {
+    } else if (!data.email) {
       msgEl.textContent = 'メールアドレスのご登録がないため、下の「領収書PDFをダウンロード」ボタンからPDFを保存し、お客様にお渡し・共有してください。';
     } else if (emailOk) {
       msgEl.textContent = 'ご入力のメールアドレスに領収書兼控えをお送りしました。ご利用ありがとうございました。';
