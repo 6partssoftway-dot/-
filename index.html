@@ -841,22 +841,39 @@ function isBusySeasonDate(dateStr) {
   return m === 3 || m === 4;
 }
 
-// 訪問日が年末年始加算・繁忙期対応加算のいずれかの対象期間に入っていたら、作業内容欄の上に金額入りの注意書きを出す
-// （加算の付け忘れ防止。自動では追加しない。どちらに該当するかで表示を切り替える）
+// 訪問日が年末年始加算・繁忙期対応加算のいずれかの対象期間に入っていたら、該当する加算項目に自動でチェックを入れ、
+// 作業内容欄の上に金額入りの案内を出す（修理不可の場合は作業内容欄自体が無いため何もしない）。
+// 自動チェックした後にスタッフが手動で外す／入れるのは自由（次に訪問日を変更するまではそのまま）。
 function updateYearEndNotice() {
   const box = document.getElementById('yearEndNoticeBox');
   const textEl = document.getElementById('yearEndNoticeText');
   const dateStr = document.getElementById('visitDate').value;
   const win = dateStr && getYearEndNewYearWindow(dateStr);
-  if (win && isYearEndNewYearDate(dateStr)) {
+  const isYearEnd = !!(win && isYearEndNewYearDate(dateStr));
+  const isBusy = !isYearEnd && !!(dateStr && isBusySeasonDate(dateStr));
+  const targetId = isYearEnd ? 'yearend' : (isBusy ? 'busy' : null);
+
+  if (!cannotRepairCheckEl.checked) {
+    ['yearend', 'busy'].forEach(id => {
+      const cb = document.querySelector(`.item-check[data-id="${id}"]`);
+      if (!cb) return;
+      const shouldCheck = id === targetId;
+      if (cb.checked !== shouldCheck) {
+        cb.checked = shouldCheck;
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  if (isYearEnd) {
     const item = ITEMS.find(i => i.id === 'yearend') || {};
     textEl.textContent =
-      `本日は年末年始加算の対象期間です（${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}）。該当する場合は作業内容から「${item.label || '年末年始加算'}」（+${formatYen(item.price)}・税抜）を追加してください。`;
+      `本日は年末年始加算の対象期間です（${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}）。作業内容に「${item.label || '年末年始加算'}」（+${formatYen(item.price)}・税抜）を自動で追加しました。不要な場合はチェックを外してください。`;
     box.hidden = false;
-  } else if (dateStr && isBusySeasonDate(dateStr)) {
+  } else if (isBusy) {
     const item = ITEMS.find(i => i.id === 'busy') || {};
     textEl.textContent =
-      `本日は繁忙期対応加算の対象期間です（3月・4月）。該当する場合は作業内容から「${item.label || '繁忙期対応加算'}」（+${formatYen(item.price)}・税抜）を追加してください。`;
+      `本日は繁忙期対応加算の対象期間です（3月・4月）。作業内容に「${item.label || '繁忙期対応加算'}」（+${formatYen(item.price)}・税抜）を自動で追加しました。不要な場合はチェックを外してください。`;
     box.hidden = false;
   } else {
     box.hidden = true;
@@ -1218,6 +1235,7 @@ async function saveAdminPriceList() {
     okEl.textContent = '保存しました。';
     ITEMS = items;
     buildTable();
+    updateYearEndNotice();
   } catch (err) {
     if (err.code === 'session_expired') {
       clearSession(); showLoginScreen();
@@ -2701,6 +2719,8 @@ cannotRepairCheckEl.addEventListener('change', () => {
   if (cannotRepair) clearSignature();
   document.getElementById('cannotRepairConfirmBox').hidden = true;
   document.getElementById('submitBtn').textContent = cannotRepair ? '内容を確認して登録する' : '同意して送信する';
+  // 修理不可を解除したときに、年末年始・繁忙期加算の自動チェックを再適用する
+  updateYearEndNotice();
 });
 
 // ===== 延長保証（料金表示・加入欄の表示切替） =====
