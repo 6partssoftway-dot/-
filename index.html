@@ -806,22 +806,20 @@ function localDateStr(d = new Date()) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-// ===== 年末年始加算の対象期間（毎年自動計算：年末最後の土曜日〜成人の日（1月第2月曜）） =====
+// ===== 年末年始加算の対象期間（毎年自動計算：年末最後の土曜日〜1月5日） =====
 function lastSaturdayOfDec(year) {
   const d = new Date(year, 11, 31);
   d.setDate(d.getDate() - ((d.getDay() - 6 + 7) % 7));
   return d;
 }
-function secondMondayOfJan(year) {
-  const jan1 = new Date(year, 0, 1);
-  const firstMonday = new Date(year, 0, 1 + ((8 - jan1.getDay()) % 7));
-  return new Date(firstMonday.getFullYear(), firstMonday.getMonth(), firstMonday.getDate() + 7);
+function fifthOfJan(year) {
+  return new Date(year, 0, 5);
 }
 // 12月・1月の日付だけが対象になり得る（またぐ年の組み合わせを正しく選ぶ）
 function getYearEndNewYearWindow(dateStr) {
   const [y, m] = dateStr.split('-').map(Number);
-  if (m === 12) return { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) };
-  if (m === 1) return { start: lastSaturdayOfDec(y - 1), end: secondMondayOfJan(y) };
+  if (m === 12) return { start: lastSaturdayOfDec(y), end: fifthOfJan(y + 1) };
+  if (m === 1) return { start: lastSaturdayOfDec(y - 1), end: fifthOfJan(y) };
   return null;
 }
 function isYearEndNewYearDate(dateStr) {
@@ -2284,8 +2282,8 @@ function renderScheduleCalendarGrid() {
 
   // 表示中の月が年末年始加算・繁忙期対応加算のいずれかの対象期間にかかっていれば、金額入りで文章でも示す
   const noteEl = document.getElementById('scheduleYearEndNote');
-  const yearEndWin = (m === 11) ? { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) }
-    : (m === 0) ? { start: lastSaturdayOfDec(y - 1), end: secondMondayOfJan(y) }
+  const yearEndWin = (m === 11) ? { start: lastSaturdayOfDec(y), end: fifthOfJan(y + 1) }
+    : (m === 0) ? { start: lastSaturdayOfDec(y - 1), end: fifthOfJan(y) }
     : null;
   if (yearEndWin) {
     const item = ITEMS.find(i => i.id === 'yearend') || {};
