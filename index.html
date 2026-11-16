@@ -94,7 +94,7 @@
   #successScreen p { font-size:13px; color:var(--gray); line-height:1.7; }
   .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
   .btn-download:hover { opacity:.9; }
-  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} }
+  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} .schedule-calendar-cell{min-height:46px;padding:2px;} .schedule-calendar-chip,.schedule-calendar-more{font-size:8px;} .schedule-calendar-daynum{font-size:10px;width:16px;height:16px;} }
   /* login */
   .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
   .login-body { padding:28px 24px; }
@@ -149,6 +149,19 @@
   .pref-add-row button { flex-shrink:0; background:none; border:1px solid var(--blue); color:var(--blue); border-radius:4px; padding:0 12px; font-size:12px; cursor:pointer; }
   .staff-card-footer { display:flex; justify-content:flex-end; margin-top:12px; }
   /* 予定表 */
+  .schedule-month-nav { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .schedule-month-nav button#scheduleMonthPrevBtn, .schedule-month-nav button#scheduleMonthNextBtn { background:none; border:1px solid var(--border); border-radius:4px; padding:6px 12px; cursor:pointer; font-size:14px; color:var(--blue); }
+  .schedule-month-label { font-size:16px; font-weight:700; color:var(--blue); min-width:110px; text-align:center; }
+  .schedule-calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .schedule-calendar-weekday { background:var(--blue-light); color:var(--blue); font-size:11px; font-weight:700; text-align:center; padding:6px 0; }
+  .schedule-calendar-cell { background:#fff; min-height:62px; padding:3px; cursor:pointer; }
+  .schedule-calendar-cell.is-outside { background:var(--gray-light); cursor:default; }
+  .schedule-calendar-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
+  .schedule-calendar-daynum { font-size:11px; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  .schedule-calendar-cell.is-today .schedule-calendar-daynum { background:var(--blue); color:#fff; font-weight:700; }
+  .schedule-calendar-chip { font-size:9px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:1px 3px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .schedule-calendar-more { font-size:9px; color:var(--gray); margin-top:2px; }
+  .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
   .schedule-day-heading { font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
   .schedule-day-heading:first-child { margin-top:0; }
   .schedule-event { border:1px solid var(--border); border-radius:6px; padding:10px 14px; margin-bottom:8px; background:var(--gray-light); }
@@ -656,24 +669,23 @@
     <p id="scheduleScopeNote">Googleカレンダーと連携しています</p>
   </div>
   <div class="section">
-    <div class="grid-2" style="align-items:end;margin-bottom:12px">
-      <div class="field">
-        <label>開始日〜終了日</label>
-        <div style="display:flex;gap:6px">
-          <input type="date" id="scheduleFrom">
-          <input type="date" id="scheduleTo">
-        </div>
-      </div>
-      <div class="field" id="scheduleAreaWrap" hidden>
-        <label>エリア</label>
-        <select id="scheduleArea">
-          <option value="">全体</option>
-        </select>
-      </div>
+    <div class="schedule-month-nav">
+      <button type="button" id="scheduleMonthPrevBtn">◀</button>
+      <span class="schedule-month-label" id="scheduleMonthLabel"></span>
+      <button type="button" id="scheduleMonthNextBtn">▶</button>
+      <button type="button" class="btn-add-row" id="scheduleRefreshBtn" style="margin-top:0;margin-left:10px">🔄 更新</button>
     </div>
-    <button type="button" class="btn-add-row" id="scheduleRefreshBtn">更新</button>
-    <button type="button" class="btn-add-row" id="scheduleAddBtn" style="margin-left:8px">＋ 予定を追加</button>
-    <p id="scheduleError" class="error-msg" style="margin-top:10px"></p>
+    <div class="field" id="scheduleAreaWrap" hidden style="max-width:260px;margin-bottom:14px">
+      <label>エリア</label>
+      <select id="scheduleArea">
+        <option value="">全体</option>
+      </select>
+    </div>
+    <p id="scheduleError" class="error-msg"></p>
+
+    <div class="schedule-calendar-grid" id="scheduleCalendarGrid"></div>
+
+    <div id="scheduleDayPanel" style="margin-top:18px"></div>
 
     <div id="scheduleFormWrap" hidden class="consent-box" style="background:var(--gray-light);border-color:var(--border);margin-top:16px">
       <div class="section-title" id="scheduleFormTitle">予定を追加</div>
@@ -681,10 +693,6 @@
         <div class="field" id="scheduleFormCalendarWrap">
           <label>対象カレンダー</label>
           <select id="scheduleFormCalendar"></select>
-        </div>
-        <div class="field">
-          <label>タイトル <span class="req">*</span></label>
-          <input type="text" id="scheduleFormTitleInput" placeholder="例：福岡県　山田太郎">
         </div>
         <div class="field">
           <label>日付 <span class="req">*</span></label>
@@ -699,12 +707,8 @@
           </div>
         </div>
         <div class="field span-2">
-          <label>場所</label>
-          <input type="text" id="scheduleFormLocation" placeholder="住所など">
-        </div>
-        <div class="field span-2">
-          <label>詳細（「項目名：内容」を1行ずつ書くとアプリ側に自動入力されます）</label>
-          <textarea id="scheduleFormDesc" rows="4" placeholder="住所：&#10;電話：&#10;受注元："></textarea>
+          <label>内容（任意・空欄なら「出勤可能」になります）</label>
+          <input type="text" id="scheduleFormTitleInput" placeholder="例：出勤可能／休み／午前のみ">
         </div>
       </div>
       <p id="scheduleFormError" class="error-msg"></p>
@@ -713,8 +717,6 @@
         <button type="button" class="btn-clear" id="scheduleFormCancelBtn">キャンセル</button>
       </div>
     </div>
-
-    <div id="scheduleList" style="margin-top:18px"></div>
   </div>
 </div>
 
@@ -1919,31 +1921,39 @@ async function loadAnalytics() {
   }
 }
 
-// ===== 予定表（Googleカレンダー連携） =====
+// ===== 予定表（Googleカレンダー連携・月表示） =====
 let scheduleEventsCache = [];
 let scheduleStaffOptions = [];
 let scheduleEditingContext = null; // 編集中の予定 { eventId, calendarName }、新規作成時はnull
+let scheduleCurrentMonth = null; // その月の1日（Dateオブジェクト）
+let scheduleSelectedDate = null; // 'YYYY-MM-DD'（カレンダー上で選択中の日）
 
 document.getElementById('scheduleOpenBtn').addEventListener('click', openScheduleScreen);
 document.getElementById('scheduleBackBtn').addEventListener('click', closeScheduleScreen);
 document.getElementById('scheduleRefreshBtn').addEventListener('click', loadScheduleEvents);
 document.getElementById('scheduleArea').addEventListener('change', loadScheduleEvents);
-document.getElementById('scheduleAddBtn').addEventListener('click', () => openScheduleForm(null));
+document.getElementById('scheduleMonthPrevBtn').addEventListener('click', () => changeScheduleMonth(-1));
+document.getElementById('scheduleMonthNextBtn').addEventListener('click', () => changeScheduleMonth(1));
 document.getElementById('scheduleFormCancelBtn').addEventListener('click', closeScheduleForm);
 document.getElementById('scheduleFormSaveBtn').addEventListener('click', saveScheduleForm);
-
-function defaultScheduleRange() {
-  const today = new Date();
-  const toDate = new Date(today);
-  toDate.setDate(toDate.getDate() + 6);
-  return { from: localDateStr(today), to: localDateStr(toDate) };
-}
 
 function formatDateJp(dayStr) {
   const [y, m, d] = dayStr.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
   const w = ['日', '月', '火', '水', '木', '金', '土'][dt.getDay()];
   return `${m}月${d}日（${w}）`;
+}
+
+function renderScheduleMonthLabel() {
+  document.getElementById('scheduleMonthLabel').textContent =
+    `${scheduleCurrentMonth.getFullYear()}年${scheduleCurrentMonth.getMonth() + 1}月`;
+}
+
+function changeScheduleMonth(delta) {
+  scheduleCurrentMonth = new Date(scheduleCurrentMonth.getFullYear(), scheduleCurrentMonth.getMonth() + delta, 1);
+  scheduleSelectedDate = null;
+  renderScheduleMonthLabel();
+  loadScheduleEvents();
 }
 
 function openScheduleScreen() {
@@ -1963,12 +1973,13 @@ function openScheduleScreen() {
     areaSel.dataset.filled = '1';
   }
 
-  if (!document.getElementById('scheduleFrom').value) {
-    const { from, to } = defaultScheduleRange();
-    document.getElementById('scheduleFrom').value = from;
-    document.getElementById('scheduleTo').value = to;
+  if (!scheduleCurrentMonth) {
+    const today = new Date();
+    scheduleCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    scheduleSelectedDate = localDateStr(today);
   }
   closeScheduleForm();
+  renderScheduleMonthLabel();
   loadScheduleEvents();
 }
 
@@ -1983,9 +1994,9 @@ async function loadScheduleEvents() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
 
-  const fromDate = document.getElementById('scheduleFrom').value;
-  const toDate = document.getElementById('scheduleTo').value;
-  if (!fromDate || !toDate) { errEl.textContent = '開始日と終了日を入力してください'; return; }
+  const y = scheduleCurrentMonth.getFullYear(), m = scheduleCurrentMonth.getMonth();
+  const fromDate = localDateStr(new Date(y, m, 1));
+  const toDate = localDateStr(new Date(y, m + 1, 0));
   const prefecture = session.role === 'admin' ? document.getElementById('scheduleArea').value : '';
 
   const btn = document.getElementById('scheduleRefreshBtn');
@@ -1993,49 +2004,99 @@ async function loadScheduleEvents() {
   try {
     const result = await gasCall('getScheduleEvents', { session: session.token, fromDate, toDate, prefecture });
     scheduleStaffOptions = result.calendarNames || [];
-    renderScheduleEvents(result.events || []);
+    scheduleEventsCache = result.events || [];
+    renderScheduleCalendarGrid();
+    renderScheduleDayPanel();
   } catch (err) {
     errEl.textContent = err.message;
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
   } finally {
-    btn.disabled = false; btn.textContent = '更新';
+    btn.disabled = false; btn.textContent = '🔄 更新';
   }
 }
 
-function renderScheduleEvents(events) {
-  scheduleEventsCache = events;
-  const listEl = document.getElementById('scheduleList');
-  if (events.length === 0) {
-    listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">この期間の予定はありません。</p>';
-    return;
-  }
-  const byDay = {};
-  events.forEach((ev, idx) => {
-    const day = (ev.start || '').slice(0, 10);
-    (byDay[day] = byDay[day] || []).push(idx);
-  });
-  const days = Object.keys(byDay).sort();
-  listEl.innerHTML = days.map(day => `
-    <div class="schedule-day-heading">${escapeHtml(formatDateJp(day))}</div>
-    ${byDay[day]
-      .sort((a, b) => events[a].start.localeCompare(events[b].start))
-      .map(idx => scheduleEventCardHtml(events[idx], idx)).join('')}
-  `).join('');
+function renderScheduleCalendarGrid() {
+  const grid = document.getElementById('scheduleCalendarGrid');
+  const y = scheduleCurrentMonth.getFullYear(), m = scheduleCurrentMonth.getMonth();
+  const startOffset = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayStr = localDateStr();
 
-  listEl.querySelectorAll('.btn-schedule-edit').forEach(btn => {
+  const eventsByDay = {};
+  scheduleEventsCache.forEach(ev => {
+    const day = (ev.start || '').slice(0, 10);
+    (eventsByDay[day] = eventsByDay[day] || []).push(ev);
+  });
+
+  const weekdayHtml = ['日', '月', '火', '水', '木', '金', '土']
+    .map(w => `<div class="schedule-calendar-weekday">${w}</div>`).join('');
+
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  const maxShow = 3;
+  let cellsHtml = '';
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      cellsHtml += `<div class="schedule-calendar-cell is-outside"></div>`;
+      continue;
+    }
+    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const dayEvents = (eventsByDay[dateStr] || []).slice().sort((a, b) => a.start.localeCompare(b.start));
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === scheduleSelectedDate;
+    const chips = dayEvents.slice(0, maxShow).map(ev =>
+      `<div class="schedule-calendar-chip">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`
+    ).join('');
+    const more = dayEvents.length > maxShow ? `<div class="schedule-calendar-more">+${dayEvents.length - maxShow}件</div>` : '';
+    cellsHtml += `
+      <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}" data-date="${dateStr}">
+        <div class="schedule-calendar-daynum">${dayNum}</div>
+        ${chips}${more}
+      </div>`;
+  }
+  grid.innerHTML = weekdayHtml + cellsHtml;
+  grid.querySelectorAll('.schedule-calendar-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      scheduleSelectedDate = cell.dataset.date;
+      renderScheduleCalendarGrid();
+      renderScheduleDayPanel();
+    });
+  });
+}
+
+function renderScheduleDayPanel() {
+  const panel = document.getElementById('scheduleDayPanel');
+  if (!scheduleSelectedDate) { panel.innerHTML = ''; return; }
+  const dayEvents = scheduleEventsCache
+    .map((ev, idx) => ({ ev, idx }))
+    .filter(x => (x.ev.start || '').slice(0, 10) === scheduleSelectedDate)
+    .sort((a, b) => a.ev.start.localeCompare(b.ev.start));
+
+  panel.innerHTML = `
+    <div class="schedule-day-panel-title">${escapeHtml(formatDateJp(scheduleSelectedDate))}の予定</div>
+    ${dayEvents.length === 0 ? '<p style="font-size:13px;color:var(--gray)">この日の予定はありません。</p>' : ''}
+    ${dayEvents.map(x => scheduleEventCardHtml(x.ev, x.idx)).join('')}
+    <button type="button" class="btn-add-row" id="scheduleDayAddBtn">＋ この日に追加</button>
+  `;
+  document.getElementById('scheduleDayAddBtn').addEventListener('click', () => openScheduleForm(null));
+  wireScheduleEventCardButtons(panel);
+}
+
+function wireScheduleEventCardButtons(container) {
+  container.querySelectorAll('.btn-schedule-edit').forEach(btn => {
     btn.addEventListener('click', () => openScheduleForm(scheduleEventsCache[Number(btn.dataset.idx)]));
   });
-  listEl.querySelectorAll('.btn-schedule-delete').forEach(btn => {
+  container.querySelectorAll('.btn-schedule-delete').forEach(btn => {
     btn.addEventListener('click', () => {
       const card = btn.closest('.schedule-event');
       card.querySelector('.schedule-confirm-row').hidden = false;
       btn.hidden = true;
     });
   });
-  listEl.querySelectorAll('.btn-schedule-delete-yes').forEach(btn => {
+  container.querySelectorAll('.btn-schedule-delete-yes').forEach(btn => {
     btn.addEventListener('click', () => deleteScheduleEvent(scheduleEventsCache[Number(btn.dataset.idx)]));
   });
-  listEl.querySelectorAll('.btn-schedule-delete-no').forEach(btn => {
+  container.querySelectorAll('.btn-schedule-delete-no').forEach(btn => {
     btn.addEventListener('click', () => {
       const card = btn.closest('.schedule-event');
       card.querySelector('.schedule-confirm-row').hidden = true;
@@ -2087,14 +2148,12 @@ function openScheduleForm(ev) {
   }
 
   document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
-  document.getElementById('scheduleFormLocation').value = ev ? (ev.location || '') : '';
-  document.getElementById('scheduleFormDesc').value = ev ? (ev.description || '') : '';
   if (ev) {
     document.getElementById('scheduleFormDate').value = ev.start.slice(0, 10);
     document.getElementById('scheduleFormStart').value = ev.start.slice(11, 16);
     document.getElementById('scheduleFormEnd').value = ev.end.slice(11, 16);
   } else {
-    document.getElementById('scheduleFormDate').value = document.getElementById('scheduleFrom').value || localDateStr();
+    document.getElementById('scheduleFormDate').value = scheduleSelectedDate || localDateStr();
     document.getElementById('scheduleFormStart').value = '';
     document.getElementById('scheduleFormEnd').value = '';
   }
@@ -2113,11 +2172,10 @@ async function saveScheduleForm() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
 
-  const title = document.getElementById('scheduleFormTitleInput').value.trim();
+  const title = document.getElementById('scheduleFormTitleInput').value.trim() || '出勤可能';
   const date = document.getElementById('scheduleFormDate').value;
   const startTime = document.getElementById('scheduleFormStart').value;
   const endTime = document.getElementById('scheduleFormEnd').value;
-  if (!title) { errEl.textContent = 'タイトルを入力してください'; return; }
   if (!date || !startTime || !endTime) { errEl.textContent = '日付と開始・終了時刻を入力してください'; return; }
   if (endTime <= startTime) { errEl.textContent = '終了時刻は開始時刻より後にしてください'; return; }
 
@@ -2129,8 +2187,6 @@ async function saveScheduleForm() {
     session: session.token,
     calendarName,
     title,
-    location: document.getElementById('scheduleFormLocation').value.trim(),
-    description: document.getElementById('scheduleFormDesc').value,
     start: `${date}T${startTime}`,
     end: `${date}T${endTime}`,
   };
