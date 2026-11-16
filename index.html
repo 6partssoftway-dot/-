@@ -208,6 +208,9 @@
   <div class="user-bar">
     <span id="selectBarName"></span>
     <div class="bar-actions">
+      <button type="button" class="btn-logout" id="selectScheduleOpenBtn">📅 予定表</button>
+      <button type="button" class="btn-logout" id="selectAnalyticsOpenBtn">📊 実績</button>
+      <button type="button" class="btn-logout" id="selectAdminOpenBtn" hidden>⚙ 管理画面</button>
       <button type="button" class="btn-logout" id="selectLogoutBtn">ログアウト</button>
     </div>
   </div>
@@ -648,11 +651,30 @@
     <div style="margin-top:20px">
       <div class="section-title">案件明細</div>
       <div style="overflow-x:auto">
-        <table class="work-table" style="font-size:12px;min-width:900px">
-          <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合率</th><th>歩合給</th></tr></thead>
+        <table class="work-table" style="font-size:12px;min-width:980px">
+          <thead><tr><th>日付</th><th>担当者</th><th>客名前</th><th>地域</th><th>作業内容</th><th>区分</th><th>売上</th><th>仕入れ</th><th>粗利</th><th>歩合率</th><th>歩合給</th><th>領収書</th></tr></thead>
           <tbody id="analyticsDetailBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div id="receiptReissueWrap" hidden class="consent-box" style="background:var(--gray-light);border-color:var(--border);margin-top:16px">
+      <div class="section-title">領収書の再発行</div>
+      <div id="receiptReissueSummary" style="font-size:13px;line-height:1.8;margin-bottom:12px"></div>
+      <div class="grid-2">
+        <div class="field span-2">
+          <label>送付先メールアドレス（元データに無ければ入力してください）</label>
+          <input type="email" id="receiptReissueEmail" placeholder="example@gmail.com">
+        </div>
+      </div>
+      <p id="receiptReissueError" class="error-msg"></p>
+      <p id="receiptReissueOk" style="color:var(--green);font-size:13px;margin-top:4px"></p>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <button type="button" class="btn-download" id="receiptReissueDownloadBtn" style="margin-top:0">📄 PDFをダウンロード</button>
+        <button type="button" class="btn-submit" id="receiptReissueSendBtn" style="width:auto;padding:10px 28px">📧 お客様にメールで再送する</button>
+        <button type="button" class="btn-clear" id="receiptReissueCancelBtn">閉じる</button>
+      </div>
+      <p style="font-size:11px;color:var(--gray);margin-top:10px">※ 再発行の領収書は、作業内容欄をまとめて1行で表示します（元の内訳明細とは体裁が異なります）。金額は記録されている合計金額をもとに計算し直しています。</p>
     </div>
   </div>
 </div>
@@ -822,6 +844,7 @@ function showLoginScreen() {
   document.getElementById('mainPage').hidden = true;
   document.getElementById('adminScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = true;
+  document.getElementById('scheduleScreen').hidden = true;
 }
 
 // ログイン直後はここに来る。カレンダーの予定から選ぶか、手入力で進めるかを選択する画面。
@@ -830,8 +853,10 @@ function showCustomerSelectScreen(session) {
   document.getElementById('mainPage').hidden = true;
   document.getElementById('adminScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = true;
+  document.getElementById('scheduleScreen').hidden = true;
   document.getElementById('customerSelectScreen').hidden = false;
   document.getElementById('selectBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
+  document.getElementById('selectAdminOpenBtn').hidden = session.role !== 'admin';
   document.getElementById('selectError').textContent = '';
   document.getElementById('selectEventList').innerHTML = '';
   loadTodaysCustomerList();
@@ -890,6 +915,7 @@ async function showMainScreen(session) {
   document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('adminScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = true;
+  document.getElementById('scheduleScreen').hidden = true;
   document.getElementById('mainPage').hidden = false;
   document.getElementById('userBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   document.getElementById('adminOpenBtn').hidden = session.role !== 'admin';
@@ -956,10 +982,18 @@ document.getElementById('priceListRetryBtn').addEventListener('click', async e =
   try { await loadPriceListFromServer(session.token); } finally { btn.disabled = false; }
 });
 
+// 管理画面／実績／予定表は、メインフォーム（mainPage）・本日のお客様（customerSelectScreen）の
+// どちらからでも開けるようにしており、「戻る」では開いた元の画面に戻す
+let navReturnScreen = 'mainPage';
+function captureNavReturnScreen() {
+  navReturnScreen = document.getElementById('customerSelectScreen').hidden ? 'mainPage' : 'customerSelectScreen';
+}
+
 // ===== 管理画面：価格表編集 =====
 let adminPriceBaseVersion = null;
 
 document.getElementById('adminOpenBtn').addEventListener('click', openAdminScreen);
+document.getElementById('selectAdminOpenBtn').addEventListener('click', openAdminScreen);
 document.getElementById('adminBackBtn').addEventListener('click', closeAdminScreen);
 document.getElementById('addPriceRowBtn').addEventListener('click', () => {
   document.getElementById('adminPriceList').appendChild(
@@ -971,9 +1005,11 @@ document.getElementById('savePriceListBtn').addEventListener('click', saveAdminP
 function openAdminScreen() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
+  captureNavReturnScreen();
   document.getElementById('mainPage').hidden = true;
+  document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('adminScreen').hidden = false;
-  document.getElementById('adminBarName').textContent = document.getElementById('userBarName').textContent;
+  document.getElementById('adminBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   // 価格表タブを既定表示にリセット
   document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'price'));
   document.getElementById('adminTabPrice').hidden = false;
@@ -984,7 +1020,7 @@ function openAdminScreen() {
 
 function closeAdminScreen() {
   document.getElementById('adminScreen').hidden = true;
-  document.getElementById('mainPage').hidden = false;
+  document.getElementById(navReturnScreen).hidden = false;
 }
 
 async function loadAdminPriceList() {
@@ -1802,6 +1838,7 @@ async function loadOrderSourcesFromServer(sessionToken) {
 
 // ===== 実績（分析） =====
 document.getElementById('analyticsOpenBtn').addEventListener('click', openAnalyticsScreen);
+document.getElementById('selectAnalyticsOpenBtn').addEventListener('click', openAnalyticsScreen);
 document.getElementById('analyticsBackBtn').addEventListener('click', closeAnalyticsScreen);
 document.getElementById('analyticsRefreshBtn').addEventListener('click', loadAnalytics);
 document.getElementById('analyticsPreset').addEventListener('change', () => {
@@ -1812,9 +1849,11 @@ document.getElementById('analyticsPreset').addEventListener('change', () => {
 function openAnalyticsScreen() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
+  captureNavReturnScreen();
   document.getElementById('mainPage').hidden = true;
+  document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('analyticsScreen').hidden = false;
-  document.getElementById('analyticsBarName').textContent = document.getElementById('userBarName').textContent;
+  document.getElementById('analyticsBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   document.getElementById('analyticsScopeNote').textContent =
     session.role === 'admin' ? '全スタッフの実績を表示しています' : 'あなた自身の実績のみ表示しています';
   loadAnalytics();
@@ -1822,7 +1861,7 @@ function openAnalyticsScreen() {
 
 function closeAnalyticsScreen() {
   document.getElementById('analyticsScreen').hidden = true;
-  document.getElementById('mainPage').hidden = false;
+  document.getElementById(navReturnScreen).hidden = false;
 }
 
 async function loadAnalytics() {
@@ -1897,8 +1936,9 @@ async function loadAnalytics() {
       </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
 
+    analyticsDetailCache = result.detail || [];
     const detailBody = document.getElementById('analyticsDetailBody');
-    detailBody.innerHTML = (result.detail || []).map(d => `
+    detailBody.innerHTML = analyticsDetailCache.map((d, idx) => `
       <tr>
         <td>${escapeHtml(d.visitDate || '-')}</td>
         <td>${escapeHtml(d.staffName || '-')}</td>
@@ -1911,13 +1951,115 @@ async function loadAnalytics() {
         <td style="text-align:right">${d.grossProfit != null ? '¥' + d.grossProfit.toLocaleString() : '-'}</td>
         <td style="text-align:right">${d.commissionRate != null ? d.commissionRate + '%' : '-'}</td>
         <td style="text-align:right">${d.commission != null ? '¥' + d.commission.toLocaleString() : '-'}</td>
+        <td>${(d.revenue > 0 && d.caseType !== '修理不可') ? `<button type="button" class="btn-clear btn-receipt-reissue" data-idx="${idx}" style="white-space:nowrap">🧾 再発行</button>` : '-'}</td>
       </tr>`
     ).join('') || '<tr><td>データがありません</td></tr>';
+    detailBody.querySelectorAll('.btn-receipt-reissue').forEach(btn => {
+      btn.addEventListener('click', () => openReceiptReissue(analyticsDetailCache[Number(btn.dataset.idx)]));
+    });
   } catch (err) {
     errEl.textContent = err.message;
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
   } finally {
     btn.disabled = false; btn.textContent = '更新';
+  }
+}
+
+// ===== 領収書の再発行 =====
+let analyticsDetailCache = [];
+let receiptReissueRow = null;
+
+document.getElementById('receiptReissueCancelBtn').addEventListener('click', closeReceiptReissue);
+document.getElementById('receiptReissueDownloadBtn').addEventListener('click', () => handleReceiptReissueAction('download'));
+document.getElementById('receiptReissueSendBtn').addEventListener('click', () => handleReceiptReissueAction('send'));
+
+function openReceiptReissue(row) {
+  receiptReissueRow = row;
+  document.getElementById('receiptReissueError').textContent = '';
+  document.getElementById('receiptReissueOk').textContent = '';
+  document.getElementById('receiptReissueEmail').value = row.email || '';
+  document.getElementById('receiptReissueSummary').innerHTML = `
+    訪問日：${escapeHtml(row.visitDate || '-')}　お客様：${escapeHtml(row.customerName || '-')} 様<br>
+    金額（税込）：¥${(row.revenue || 0).toLocaleString()}　担当：${escapeHtml(row.staffName || '-')}
+  `;
+  const wrap = document.getElementById('receiptReissueWrap');
+  wrap.hidden = false;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeReceiptReissue() {
+  receiptReissueRow = null;
+  document.getElementById('receiptReissueWrap').hidden = true;
+}
+
+// Notionには内訳明細（workItems配列）までは保存していないため、合計金額と記録済みの「内容」テキストから
+// 1行構成の領収書データを組み立てる（元の明細とは体裁が異なる簡易版になる）
+function buildReissueReceiptData(row, email) {
+  const total = Math.round(Number(row.revenue) || 0);
+  const subtotal = Math.round(total / 1.1);
+  const tax = total - subtotal;
+  const contentLine = (row.content || '作業内容').replace(/\r?\n+/g, ' / ');
+  return {
+    name: row.customerName || 'お客様',
+    address: row.address || '',
+    phone: row.phone || '',
+    maker: row.makerType || '',
+    washType: '',
+    visitDate: row.visitDate || '',
+    staffName: row.staffName || '',
+    staffInvoiceNumber: '',
+    payment: row.payment || '',
+    workItems: [{ name: contentLine, note: '', price: subtotal }],
+    subtotal, tax, total,
+    timestamp: '再発行：' + new Date().toLocaleString('ja-JP'),
+    email
+  };
+}
+
+async function handleReceiptReissueAction(mode) {
+  const errEl = document.getElementById('receiptReissueError');
+  const okEl = document.getElementById('receiptReissueOk');
+  errEl.textContent = ''; okEl.textContent = '';
+  if (!receiptReissueRow) return;
+
+  const email = document.getElementById('receiptReissueEmail').value.trim();
+  if (mode === 'send' && !email) {
+    errEl.textContent = '送付先メールアドレスを入力してください';
+    return;
+  }
+
+  const sendBtn = document.getElementById('receiptReissueSendBtn');
+  const dlBtn = document.getElementById('receiptReissueDownloadBtn');
+  sendBtn.disabled = true; dlBtn.disabled = true;
+  const activeBtn = mode === 'send' ? sendBtn : dlBtn;
+  const originalLabel = activeBtn.textContent;
+  activeBtn.textContent = '処理中...';
+  try {
+    const d = buildReissueReceiptData(receiptReissueRow, email);
+    const pdf = await generateReceiptPDF(d);
+    if (mode === 'download') {
+      pdf.save(`領収書（再発行）_${d.name}_${d.visitDate || ''}.pdf`);
+      okEl.textContent = 'PDFをダウンロードしました。';
+    } else {
+      const session = getSession();
+      if (!session) { showLoginScreen(); return; }
+      const pdfBase64 = pdf.output('datauristring').split(',')[1] || '';
+      const workList = d.workItems.map(w => `・${w.name}`).join('\n');
+      await gasCall('resendReceipt', {
+        session: session.token,
+        email, name: d.name, visitDate: d.visitDate, address: d.address, phone: d.phone,
+        makerType: [d.maker, d.washType].filter(Boolean).join(' '),
+        workList, subtotal: d.subtotal, tax: d.tax, total: d.total, payment: d.payment,
+        pdfBase64, pdfFilename: `領収書_${d.name}_${d.visitDate || ''}.pdf`
+      });
+      okEl.textContent = 'メールを再送しました。';
+    }
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    sendBtn.disabled = false; dlBtn.disabled = false;
+    activeBtn.textContent = originalLabel;
   }
 }
 
@@ -1929,6 +2071,7 @@ let scheduleCurrentMonth = null; // その月の1日（Dateオブジェクト）
 let scheduleSelectedDate = null; // 'YYYY-MM-DD'（カレンダー上で選択中の日）
 
 document.getElementById('scheduleOpenBtn').addEventListener('click', openScheduleScreen);
+document.getElementById('selectScheduleOpenBtn').addEventListener('click', openScheduleScreen);
 document.getElementById('scheduleBackBtn').addEventListener('click', closeScheduleScreen);
 document.getElementById('scheduleRefreshBtn').addEventListener('click', loadScheduleEvents);
 document.getElementById('scheduleArea').addEventListener('change', loadScheduleEvents);
@@ -1959,9 +2102,11 @@ function changeScheduleMonth(delta) {
 function openScheduleScreen() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
+  captureNavReturnScreen();
   document.getElementById('mainPage').hidden = true;
+  document.getElementById('customerSelectScreen').hidden = true;
   document.getElementById('scheduleScreen').hidden = false;
-  document.getElementById('scheduleBarName').textContent = document.getElementById('userBarName').textContent;
+  document.getElementById('scheduleBarName').textContent = `${session.name}（${session.role === 'admin' ? '管理者' : 'スタッフ'}）`;
   document.getElementById('scheduleScopeNote').textContent =
     session.role === 'admin' ? '全スタッフの予定を確認・編集できます' : 'あなた自身の予定を確認・編集できます';
 
@@ -1980,7 +2125,7 @@ function openScheduleScreen() {
 
 function closeScheduleScreen() {
   document.getElementById('scheduleScreen').hidden = true;
-  document.getElementById('mainPage').hidden = false;
+  document.getElementById(navReturnScreen).hidden = false;
 }
 
 async function loadScheduleEvents() {
