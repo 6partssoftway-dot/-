@@ -159,6 +159,8 @@
   .schedule-calendar-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
   .schedule-calendar-daynum { font-size:11px; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
   .schedule-calendar-cell.is-today .schedule-calendar-daynum { background:var(--blue); color:#fff; font-weight:700; }
+  .schedule-calendar-cell.is-yearend { background:#fff4e5; }
+  .schedule-calendar-cell.is-yearend.is-today .schedule-calendar-daynum { background:#e8710a; }
   .schedule-calendar-chip { font-size:9px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:1px 3px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; box-sizing:border-box; }
   .schedule-calendar-more { font-size:9px; color:var(--gray); margin-top:2px; }
   .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
@@ -324,6 +326,9 @@
     <!-- 作業内容・料金 -->
     <div class="section" id="workSection">
       <div class="section-title">【作業内容・料金一覧】</div>
+      <div id="yearEndNoticeBox" hidden style="background:#fff4e5;border:1px solid #f0b46a;color:#8a4b00;border-radius:4px;padding:8px 12px;margin-bottom:12px;font-size:13px;line-height:1.6">
+        ⚠ <span id="yearEndNoticeText"></span>
+      </div>
       <table class="work-table">
         <thead>
           <tr>
@@ -704,8 +709,10 @@
       </select>
     </div>
     <p id="scheduleError" class="error-msg"></p>
+    <div id="scheduleYearEndNote" hidden style="font-size:12px;color:#8a4b00;background:#fff4e5;border:1px solid #f0b46a;border-radius:4px;padding:6px 10px;margin-bottom:8px"></div>
 
     <div class="schedule-calendar-grid" id="scheduleCalendarGrid"></div>
+    <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間</div>
 
     <div id="scheduleDayPanel" style="margin-top:18px"></div>
 
@@ -796,6 +803,50 @@ function localDateStr(d = new Date()) {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+
+// ===== 年末年始加算の対象期間（毎年自動計算：年末最後の土曜日〜成人の日（1月第2月曜）） =====
+function lastSaturdayOfDec(year) {
+  const d = new Date(year, 11, 31);
+  d.setDate(d.getDate() - ((d.getDay() - 6 + 7) % 7));
+  return d;
+}
+function secondMondayOfJan(year) {
+  const jan1 = new Date(year, 0, 1);
+  const firstMonday = new Date(year, 0, 1 + ((8 - jan1.getDay()) % 7));
+  return new Date(firstMonday.getFullYear(), firstMonday.getMonth(), firstMonday.getDate() + 7);
+}
+// 12月・1月の日付だけが対象になり得る（またぐ年の組み合わせを正しく選ぶ）
+function getYearEndNewYearWindow(dateStr) {
+  const [y, m] = dateStr.split('-').map(Number);
+  if (m === 12) return { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) };
+  if (m === 1) return { start: lastSaturdayOfDec(y - 1), end: secondMondayOfJan(y) };
+  return null;
+}
+function isYearEndNewYearDate(dateStr) {
+  const win = getYearEndNewYearWindow(dateStr);
+  if (!win) return false;
+  const d = new Date(dateStr + 'T00:00:00');
+  return d >= win.start && d <= win.end;
+}
+function formatYmdJp(d) {
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// 訪問日が年末年始加算の対象期間に入っていたら、作業内容欄の上に注意書きを出す（加算の付け忘れ防止。自動では追加しない）
+function updateYearEndNotice() {
+  const box = document.getElementById('yearEndNoticeBox');
+  const dateStr = document.getElementById('visitDate').value;
+  const win = dateStr && getYearEndNewYearWindow(dateStr);
+  if (win && isYearEndNewYearDate(dateStr)) {
+    const itemLabel = (ITEMS.find(i => i.id === 'yearend') || {}).label || '年末年始加算';
+    document.getElementById('yearEndNoticeText').textContent =
+      `本日は年末年始加算の対象期間です（${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}）。該当する場合は作業内容から「${itemLabel}」を追加してください。`;
+    box.hidden = false;
+  } else {
+    box.hidden = true;
+  }
+}
+document.getElementById('visitDate').addEventListener('change', updateYearEndNotice);
 
 // 電波が悪い現場で「送信中...」のまま固まらないよう、応答が無ければタイムアウトさせる
 async function gasCall(action, extra, timeoutMs = 30000) {
@@ -965,6 +1016,7 @@ async function loadPriceListFromServer(sessionToken) {
     if (Array.isArray(result.items) && result.items.length > 0) {
       ITEMS = result.items;
       buildTable();
+      updateYearEndNotice();
     }
     warnEl.hidden = true;
   } catch (err) {
@@ -2191,12 +2243,13 @@ function renderScheduleCalendarGrid() {
     const dayEvents = (eventsByDay[dateStr] || []).slice().sort((a, b) => a.start.localeCompare(b.start));
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === scheduleSelectedDate;
+    const isYearEnd = isYearEndNewYearDate(dateStr);
     const chips = dayEvents.slice(0, maxShow).map(ev =>
       `<div class="schedule-calendar-chip">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`
     ).join('');
     const more = dayEvents.length > maxShow ? `<div class="schedule-calendar-more">+${dayEvents.length - maxShow}件</div>` : '';
     cellsHtml += `
-      <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}" data-date="${dateStr}">
+      <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${isYearEnd ? ' is-yearend' : ''}" data-date="${dateStr}">
         <div class="schedule-calendar-daynum">${dayNum}</div>
         ${chips}${more}
       </div>`;
@@ -2209,6 +2262,18 @@ function renderScheduleCalendarGrid() {
       renderScheduleDayPanel();
     });
   });
+
+  // 表示中の月が年末年始加算の対象期間にかかっていれば、今シーズンの正確な期間を文章でも示す
+  const noteEl = document.getElementById('scheduleYearEndNote');
+  const win = (m === 11) ? { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) }
+    : (m === 0) ? { start: lastSaturdayOfDec(y - 1), end: secondMondayOfJan(y) }
+    : null;
+  if (win) {
+    noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}（オレンジ色の日付）`;
+    noteEl.hidden = false;
+  } else {
+    noteEl.hidden = true;
+  }
 }
 
 function renderScheduleDayPanel() {
@@ -3178,6 +3243,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 // ===== INIT =====
 buildTable();
 document.getElementById('visitDate').value = localDateStr();
+updateYearEndNotice();
 const months=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const m = months[new Date().getMonth()];
 document.getElementById('regMonth').value = m;
