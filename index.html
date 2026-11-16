@@ -161,6 +161,8 @@
   .schedule-calendar-cell.is-today .schedule-calendar-daynum { background:var(--blue); color:#fff; font-weight:700; }
   .schedule-calendar-cell.is-yearend { background:#fff4e5; }
   .schedule-calendar-cell.is-yearend.is-today .schedule-calendar-daynum { background:#e8710a; }
+  .schedule-calendar-cell.is-busy { background:#e8f5ec; }
+  .schedule-calendar-cell.is-busy.is-today .schedule-calendar-daynum { background:var(--green); }
   .schedule-calendar-chip { font-size:9px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:1px 3px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; box-sizing:border-box; }
   .schedule-calendar-more { font-size:9px; color:var(--gray); margin-top:2px; }
   .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
@@ -712,7 +714,7 @@
     <div id="scheduleYearEndNote" hidden style="font-size:12px;color:#8a4b00;background:#fff4e5;border:1px solid #f0b46a;border-radius:4px;padding:6px 10px;margin-bottom:8px"></div>
 
     <div class="schedule-calendar-grid" id="scheduleCalendarGrid"></div>
-    <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間　🟩 繁忙期対応加算の対象期間（3・4月）</div>
 
     <div id="scheduleDayPanel" style="margin-top:18px"></div>
 
@@ -831,16 +833,32 @@ function isYearEndNewYearDate(dateStr) {
 function formatYmdJp(d) {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }
+function formatYen(n) {
+  return '¥' + Number(n || 0).toLocaleString();
+}
 
-// 訪問日が年末年始加算の対象期間に入っていたら、作業内容欄の上に注意書きを出す（加算の付け忘れ防止。自動では追加しない）
+// ===== 繁忙期対応加算の対象期間（3月・4月はまるごと対象） =====
+function isBusySeasonDate(dateStr) {
+  const m = Number(dateStr.split('-')[1]);
+  return m === 3 || m === 4;
+}
+
+// 訪問日が年末年始加算・繁忙期対応加算のいずれかの対象期間に入っていたら、作業内容欄の上に金額入りの注意書きを出す
+// （加算の付け忘れ防止。自動では追加しない。どちらに該当するかで表示を切り替える）
 function updateYearEndNotice() {
   const box = document.getElementById('yearEndNoticeBox');
+  const textEl = document.getElementById('yearEndNoticeText');
   const dateStr = document.getElementById('visitDate').value;
   const win = dateStr && getYearEndNewYearWindow(dateStr);
   if (win && isYearEndNewYearDate(dateStr)) {
-    const itemLabel = (ITEMS.find(i => i.id === 'yearend') || {}).label || '年末年始加算';
-    document.getElementById('yearEndNoticeText').textContent =
-      `本日は年末年始加算の対象期間です（${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}）。該当する場合は作業内容から「${itemLabel}」を追加してください。`;
+    const item = ITEMS.find(i => i.id === 'yearend') || {};
+    textEl.textContent =
+      `本日は年末年始加算の対象期間です（${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}）。該当する場合は作業内容から「${item.label || '年末年始加算'}」（+${formatYen(item.price)}・税抜）を追加してください。`;
+    box.hidden = false;
+  } else if (dateStr && isBusySeasonDate(dateStr)) {
+    const item = ITEMS.find(i => i.id === 'busy') || {};
+    textEl.textContent =
+      `本日は繁忙期対応加算の対象期間です（3月・4月）。該当する場合は作業内容から「${item.label || '繁忙期対応加算'}」（+${formatYen(item.price)}・税抜）を追加してください。`;
     box.hidden = false;
   } else {
     box.hidden = true;
@@ -2244,12 +2262,13 @@ function renderScheduleCalendarGrid() {
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === scheduleSelectedDate;
     const isYearEnd = isYearEndNewYearDate(dateStr);
+    const isBusy = !isYearEnd && isBusySeasonDate(dateStr);
     const chips = dayEvents.slice(0, maxShow).map(ev =>
       `<div class="schedule-calendar-chip">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`
     ).join('');
     const more = dayEvents.length > maxShow ? `<div class="schedule-calendar-more">+${dayEvents.length - maxShow}件</div>` : '';
     cellsHtml += `
-      <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${isYearEnd ? ' is-yearend' : ''}" data-date="${dateStr}">
+      <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${isYearEnd ? ' is-yearend' : ''}${isBusy ? ' is-busy' : ''}" data-date="${dateStr}">
         <div class="schedule-calendar-daynum">${dayNum}</div>
         ${chips}${more}
       </div>`;
@@ -2263,13 +2282,18 @@ function renderScheduleCalendarGrid() {
     });
   });
 
-  // 表示中の月が年末年始加算の対象期間にかかっていれば、今シーズンの正確な期間を文章でも示す
+  // 表示中の月が年末年始加算・繁忙期対応加算のいずれかの対象期間にかかっていれば、金額入りで文章でも示す
   const noteEl = document.getElementById('scheduleYearEndNote');
-  const win = (m === 11) ? { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) }
+  const yearEndWin = (m === 11) ? { start: lastSaturdayOfDec(y), end: secondMondayOfJan(y + 1) }
     : (m === 0) ? { start: lastSaturdayOfDec(y - 1), end: secondMondayOfJan(y) }
     : null;
-  if (win) {
-    noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(win.start)}〜${formatYmdJp(win.end)}（オレンジ色の日付）`;
+  if (yearEndWin) {
+    const item = ITEMS.find(i => i.id === 'yearend') || {};
+    noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(yearEndWin.start)}〜${formatYmdJp(yearEndWin.end)}（+${formatYen(item.price)}・税抜／オレンジ色の日付）`;
+    noteEl.hidden = false;
+  } else if (m === 2 || m === 3) {
+    const item = ITEMS.find(i => i.id === 'busy') || {};
+    noteEl.textContent = `⚠ 繁忙期対応加算の対象期間：3月・4月すべて（+${formatYen(item.price)}・税抜／緑色の日付）`;
     noteEl.hidden = false;
   } else {
     noteEl.hidden = true;
