@@ -148,6 +148,19 @@
   .pref-add-row select { flex:1; }
   .pref-add-row button { flex-shrink:0; background:none; border:1px solid var(--blue); color:var(--blue); border-radius:4px; padding:0 12px; font-size:12px; cursor:pointer; }
   .staff-card-footer { display:flex; justify-content:flex-end; margin-top:12px; }
+  /* 予定表 */
+  .schedule-day-heading { font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+  .schedule-day-heading:first-child { margin-top:0; }
+  .schedule-event { border:1px solid var(--border); border-radius:6px; padding:10px 14px; margin-bottom:8px; background:var(--gray-light); }
+  .schedule-event-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .schedule-event-time { font-weight:700; color:var(--blue); font-size:14px; white-space:nowrap; }
+  .schedule-event-cal { font-size:11px; color:var(--gray); background:var(--blue-light); border-radius:10px; padding:2px 9px; white-space:nowrap; }
+  .schedule-event-title { font-size:15px; margin:4px 0 2px; }
+  .schedule-event-desc { font-size:12px; color:var(--gray); white-space:pre-wrap; margin-top:4px; }
+  .schedule-event-actions { display:flex; gap:8px; margin-top:8px; }
+  .schedule-event-actions button { font-size:11px; padding:4px 10px; }
+  .schedule-confirm-row { margin-top:8px; font-size:12px; background:#fff3f0; border:1px solid #e8a8a0; border-radius:4px; padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .schedule-confirm-row button { font-size:11px; padding:4px 10px; }
   /* order sources */
   .order-source-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
   .order-source-row input { flex:1; border:1px solid var(--border); border-radius:4px; padding:9px 10px; font-size:14px; font-family:inherit; }
@@ -203,6 +216,7 @@
   <div class="user-bar">
     <span id="userBarName"></span>
     <div class="bar-actions">
+      <button type="button" class="btn-logout" id="scheduleOpenBtn">📅 予定表</button>
       <button type="button" class="btn-logout" id="analyticsOpenBtn">📊 実績</button>
       <button type="button" class="btn-logout" id="adminOpenBtn" hidden>⚙ 管理画面</button>
       <button type="button" class="btn-logout" id="logoutBtn">ログアウト</button>
@@ -627,6 +641,80 @@
         </table>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="page" id="scheduleScreen" hidden>
+  <div class="user-bar">
+    <span id="scheduleBarName"></span>
+    <div class="bar-actions">
+      <button type="button" class="btn-logout" id="scheduleBackBtn">← フォームに戻る</button>
+    </div>
+  </div>
+  <div class="page-header">
+    <h1>予定表</h1>
+    <p id="scheduleScopeNote">Googleカレンダーと連携しています</p>
+  </div>
+  <div class="section">
+    <div class="grid-2" style="align-items:end;margin-bottom:12px">
+      <div class="field">
+        <label>開始日〜終了日</label>
+        <div style="display:flex;gap:6px">
+          <input type="date" id="scheduleFrom">
+          <input type="date" id="scheduleTo">
+        </div>
+      </div>
+      <div class="field" id="scheduleAreaWrap" hidden>
+        <label>エリア</label>
+        <select id="scheduleArea">
+          <option value="">全体</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" class="btn-add-row" id="scheduleRefreshBtn">更新</button>
+    <button type="button" class="btn-add-row" id="scheduleAddBtn" style="margin-left:8px">＋ 予定を追加</button>
+    <p id="scheduleError" class="error-msg" style="margin-top:10px"></p>
+
+    <div id="scheduleFormWrap" hidden class="consent-box" style="background:var(--gray-light);border-color:var(--border);margin-top:16px">
+      <div class="section-title" id="scheduleFormTitle">予定を追加</div>
+      <div class="grid-2">
+        <div class="field" id="scheduleFormCalendarWrap">
+          <label>対象カレンダー</label>
+          <select id="scheduleFormCalendar"></select>
+        </div>
+        <div class="field">
+          <label>タイトル <span class="req">*</span></label>
+          <input type="text" id="scheduleFormTitleInput" placeholder="例：福岡県　山田太郎">
+        </div>
+        <div class="field">
+          <label>日付 <span class="req">*</span></label>
+          <input type="date" id="scheduleFormDate">
+        </div>
+        <div class="field">
+          <label>開始〜終了時刻 <span class="req">*</span></label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="time" id="scheduleFormStart">
+            <span>〜</span>
+            <input type="time" id="scheduleFormEnd">
+          </div>
+        </div>
+        <div class="field span-2">
+          <label>場所</label>
+          <input type="text" id="scheduleFormLocation" placeholder="住所など">
+        </div>
+        <div class="field span-2">
+          <label>詳細（「項目名：内容」を1行ずつ書くとアプリ側に自動入力されます）</label>
+          <textarea id="scheduleFormDesc" rows="4" placeholder="住所：&#10;電話：&#10;受注元："></textarea>
+        </div>
+      </div>
+      <p id="scheduleFormError" class="error-msg"></p>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button type="button" class="btn-submit" id="scheduleFormSaveBtn" style="width:auto;padding:10px 28px">保存する</button>
+        <button type="button" class="btn-clear" id="scheduleFormCancelBtn">キャンセル</button>
+      </div>
+    </div>
+
+    <div id="scheduleList" style="margin-top:18px"></div>
   </div>
 </div>
 
@@ -1828,6 +1916,253 @@ async function loadAnalytics() {
     if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
   } finally {
     btn.disabled = false; btn.textContent = '更新';
+  }
+}
+
+// ===== 予定表（Googleカレンダー連携） =====
+let scheduleEventsCache = [];
+let scheduleStaffOptions = [];
+let scheduleEditingContext = null; // 編集中の予定 { eventId, calendarName }、新規作成時はnull
+
+document.getElementById('scheduleOpenBtn').addEventListener('click', openScheduleScreen);
+document.getElementById('scheduleBackBtn').addEventListener('click', closeScheduleScreen);
+document.getElementById('scheduleRefreshBtn').addEventListener('click', loadScheduleEvents);
+document.getElementById('scheduleArea').addEventListener('change', loadScheduleEvents);
+document.getElementById('scheduleAddBtn').addEventListener('click', () => openScheduleForm(null));
+document.getElementById('scheduleFormCancelBtn').addEventListener('click', closeScheduleForm);
+document.getElementById('scheduleFormSaveBtn').addEventListener('click', saveScheduleForm);
+
+function defaultScheduleRange() {
+  const today = new Date();
+  const toDate = new Date(today);
+  toDate.setDate(toDate.getDate() + 6);
+  return { from: localDateStr(today), to: localDateStr(toDate) };
+}
+
+function formatDateJp(dayStr) {
+  const [y, m, d] = dayStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const w = ['日', '月', '火', '水', '木', '金', '土'][dt.getDay()];
+  return `${m}月${d}日（${w}）`;
+}
+
+function openScheduleScreen() {
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  document.getElementById('mainPage').hidden = true;
+  document.getElementById('scheduleScreen').hidden = false;
+  document.getElementById('scheduleBarName').textContent = document.getElementById('userBarName').textContent;
+  document.getElementById('scheduleScopeNote').textContent =
+    session.role === 'admin' ? '全スタッフの予定を確認・編集できます' : 'あなた自身の予定を確認・編集できます';
+
+  const areaWrap = document.getElementById('scheduleAreaWrap');
+  areaWrap.hidden = session.role !== 'admin';
+  const areaSel = document.getElementById('scheduleArea');
+  if (session.role === 'admin' && !areaSel.dataset.filled) {
+    areaSel.innerHTML = '<option value="">全体</option>' + PREFECTURES.map(p => `<option>${escapeHtml(p)}</option>`).join('');
+    areaSel.dataset.filled = '1';
+  }
+
+  if (!document.getElementById('scheduleFrom').value) {
+    const { from, to } = defaultScheduleRange();
+    document.getElementById('scheduleFrom').value = from;
+    document.getElementById('scheduleTo').value = to;
+  }
+  closeScheduleForm();
+  loadScheduleEvents();
+}
+
+function closeScheduleScreen() {
+  document.getElementById('scheduleScreen').hidden = true;
+  document.getElementById('mainPage').hidden = false;
+}
+
+async function loadScheduleEvents() {
+  const errEl = document.getElementById('scheduleError');
+  errEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+
+  const fromDate = document.getElementById('scheduleFrom').value;
+  const toDate = document.getElementById('scheduleTo').value;
+  if (!fromDate || !toDate) { errEl.textContent = '開始日と終了日を入力してください'; return; }
+  const prefecture = session.role === 'admin' ? document.getElementById('scheduleArea').value : '';
+
+  const btn = document.getElementById('scheduleRefreshBtn');
+  btn.disabled = true; btn.textContent = '更新中...';
+  try {
+    const result = await gasCall('getScheduleEvents', { session: session.token, fromDate, toDate, prefecture });
+    scheduleStaffOptions = result.calendarNames || [];
+    renderScheduleEvents(result.events || []);
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '更新';
+  }
+}
+
+function renderScheduleEvents(events) {
+  scheduleEventsCache = events;
+  const listEl = document.getElementById('scheduleList');
+  if (events.length === 0) {
+    listEl.innerHTML = '<p style="font-size:13px;color:var(--gray)">この期間の予定はありません。</p>';
+    return;
+  }
+  const byDay = {};
+  events.forEach((ev, idx) => {
+    const day = (ev.start || '').slice(0, 10);
+    (byDay[day] = byDay[day] || []).push(idx);
+  });
+  const days = Object.keys(byDay).sort();
+  listEl.innerHTML = days.map(day => `
+    <div class="schedule-day-heading">${escapeHtml(formatDateJp(day))}</div>
+    ${byDay[day]
+      .sort((a, b) => events[a].start.localeCompare(events[b].start))
+      .map(idx => scheduleEventCardHtml(events[idx], idx)).join('')}
+  `).join('');
+
+  listEl.querySelectorAll('.btn-schedule-edit').forEach(btn => {
+    btn.addEventListener('click', () => openScheduleForm(scheduleEventsCache[Number(btn.dataset.idx)]));
+  });
+  listEl.querySelectorAll('.btn-schedule-delete').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.schedule-event');
+      card.querySelector('.schedule-confirm-row').hidden = false;
+      btn.hidden = true;
+    });
+  });
+  listEl.querySelectorAll('.btn-schedule-delete-yes').forEach(btn => {
+    btn.addEventListener('click', () => deleteScheduleEvent(scheduleEventsCache[Number(btn.dataset.idx)]));
+  });
+  listEl.querySelectorAll('.btn-schedule-delete-no').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.schedule-event');
+      card.querySelector('.schedule-confirm-row').hidden = true;
+      card.querySelector('.btn-schedule-delete').hidden = false;
+    });
+  });
+}
+
+function scheduleEventCardHtml(ev, idx) {
+  const startTime = (ev.start || '').slice(11, 16);
+  const endTime = (ev.end || '').slice(11, 16);
+  return `
+    <div class="schedule-event">
+      <div class="schedule-event-top">
+        <span class="schedule-event-time">${escapeHtml(startTime)}〜${escapeHtml(endTime)}</span>
+        <span class="schedule-event-cal">${escapeHtml(ev.calendarName)}</span>
+      </div>
+      <div class="schedule-event-title">${escapeHtml(ev.title || '（無題の予定）')}</div>
+      ${ev.location ? `<div class="schedule-event-desc">📍 ${escapeHtml(ev.location)}</div>` : ''}
+      ${ev.description ? `<div class="schedule-event-desc">${escapeHtml(ev.description)}</div>` : ''}
+      <div class="schedule-event-actions">
+        <button type="button" class="btn-clear btn-schedule-edit" data-idx="${idx}">編集</button>
+        <button type="button" class="btn-clear btn-schedule-delete" data-idx="${idx}" style="color:var(--red);border-color:#e8a8a0">削除</button>
+      </div>
+      <div class="schedule-confirm-row" hidden>
+        本当に削除しますか？
+        <button type="button" class="btn-schedule-delete-yes" data-idx="${idx}" style="color:#fff;background:var(--red);border:none;border-radius:3px;cursor:pointer">はい、削除する</button>
+        <button type="button" class="btn-clear btn-schedule-delete-no">キャンセル</button>
+      </div>
+    </div>`;
+}
+
+function openScheduleForm(ev) {
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  scheduleEditingContext = ev ? { eventId: ev.id, calendarName: ev.calendarName } : null;
+  document.getElementById('scheduleFormTitle').textContent = ev ? '予定を編集' : '予定を追加';
+  document.getElementById('scheduleFormError').textContent = '';
+
+  const calWrap = document.getElementById('scheduleFormCalendarWrap');
+  const calSel = document.getElementById('scheduleFormCalendar');
+  if (session.role === 'admin') {
+    calWrap.hidden = false;
+    const options = scheduleStaffOptions.length ? scheduleStaffOptions : [session.name];
+    calSel.innerHTML = options.map(n => `<option${n === (ev && ev.calendarName) ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('');
+    calSel.disabled = !!ev; // 編集時はカレンダーの移動不可（削除して作り直してください）
+  } else {
+    calWrap.hidden = true;
+  }
+
+  document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
+  document.getElementById('scheduleFormLocation').value = ev ? (ev.location || '') : '';
+  document.getElementById('scheduleFormDesc').value = ev ? (ev.description || '') : '';
+  if (ev) {
+    document.getElementById('scheduleFormDate').value = ev.start.slice(0, 10);
+    document.getElementById('scheduleFormStart').value = ev.start.slice(11, 16);
+    document.getElementById('scheduleFormEnd').value = ev.end.slice(11, 16);
+  } else {
+    document.getElementById('scheduleFormDate').value = document.getElementById('scheduleFrom').value || localDateStr();
+    document.getElementById('scheduleFormStart').value = '';
+    document.getElementById('scheduleFormEnd').value = '';
+  }
+  document.getElementById('scheduleFormWrap').hidden = false;
+  document.getElementById('scheduleFormWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeScheduleForm() {
+  scheduleEditingContext = null;
+  document.getElementById('scheduleFormWrap').hidden = true;
+}
+
+async function saveScheduleForm() {
+  const errEl = document.getElementById('scheduleFormError');
+  errEl.textContent = '';
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+
+  const title = document.getElementById('scheduleFormTitleInput').value.trim();
+  const date = document.getElementById('scheduleFormDate').value;
+  const startTime = document.getElementById('scheduleFormStart').value;
+  const endTime = document.getElementById('scheduleFormEnd').value;
+  if (!title) { errEl.textContent = 'タイトルを入力してください'; return; }
+  if (!date || !startTime || !endTime) { errEl.textContent = '日付と開始・終了時刻を入力してください'; return; }
+  if (endTime <= startTime) { errEl.textContent = '終了時刻は開始時刻より後にしてください'; return; }
+
+  const calendarName = scheduleEditingContext
+    ? scheduleEditingContext.calendarName
+    : (session.role === 'admin' ? document.getElementById('scheduleFormCalendar').value : session.name);
+
+  const payload = {
+    session: session.token,
+    calendarName,
+    title,
+    location: document.getElementById('scheduleFormLocation').value.trim(),
+    description: document.getElementById('scheduleFormDesc').value,
+    start: `${date}T${startTime}`,
+    end: `${date}T${endTime}`,
+  };
+
+  const btn = document.getElementById('scheduleFormSaveBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  try {
+    if (scheduleEditingContext) {
+      await gasCall('updateScheduleEvent', Object.assign({ eventId: scheduleEditingContext.eventId }, payload));
+    } else {
+      await gasCall('createScheduleEvent', payload);
+    }
+    closeScheduleForm();
+    await loadScheduleEvents();
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
+  } finally {
+    btn.disabled = false; btn.textContent = '保存する';
+  }
+}
+
+async function deleteScheduleEvent(ev) {
+  const errEl = document.getElementById('scheduleError');
+  const session = getSession();
+  if (!session) { showLoginScreen(); return; }
+  try {
+    await gasCall('deleteScheduleEvent', { session: session.token, calendarName: ev.calendarName, eventId: ev.id });
+    await loadScheduleEvents();
+  } catch (err) {
+    errEl.textContent = err.message;
+    if (err.code === 'session_expired') { clearSession(); showLoginScreen(); }
   }
 }
 
