@@ -767,13 +767,6 @@
             <input type="time" id="scheduleFormEnd">
           </div>
         </div>
-        <div class="field span-2" id="scheduleFormTitleFixedWrap" hidden>
-          <label>内容 <span class="req">*</span></label>
-          <div style="display:flex;gap:16px;margin-top:4px">
-            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="radio" name="scheduleFormStatus" value="出勤"> 出勤</label>
-            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="radio" name="scheduleFormStatus" value="稼働不可"> 稼働不可</label>
-          </div>
-        </div>
         <div class="field span-2" id="scheduleFormTitleFreeWrap">
           <label>内容</label>
           <input type="text" id="scheduleFormTitleInput" placeholder="例：福岡 田中様／会議">
@@ -2226,8 +2219,13 @@ function isScheduleUnavailable(title) {
   if (t === '稼働不可') return true; // スタッフが選ぶ固定の文言
   return /休/.test(t) && !/出勤/.test(t); // 以前の自由入力（休み・お休みなど）との互換用
 }
+// 枠（チップ）の色は「出勤」の予定だけをエリアの色で表示する。「稼働不可」はもちろん、
+// それ以外（「仕事」カレンダーの客先予定など自由入力のもの）はすべて灰色にする。
+function isScheduleAvailable(title) {
+  return (title || '').trim().indexOf('出勤') === 0;
+}
 function colorForEvent(ev) {
-  return isScheduleUnavailable(ev.title) ? SCHEDULE_UNAVAILABLE_COLOR : colorForArea(ev.area);
+  return isScheduleAvailable(ev.title) ? colorForArea(ev.area) : SCHEDULE_UNAVAILABLE_COLOR;
 }
 function renderScheduleAreaLegend(areas) {
   const el = document.getElementById('scheduleAreaLegend');
@@ -2657,12 +2655,8 @@ function scheduleFormIsFreeText() {
 function updateScheduleFormTitleMode(ev) {
   const freeText = scheduleFormIsFreeText();
   document.getElementById('scheduleFormTitleFreeWrap').hidden = !freeText;
-  document.getElementById('scheduleFormTitleFixedWrap').hidden = freeText;
   if (freeText) {
     document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
-  } else {
-    const isUnavailable = ev ? isScheduleUnavailable(ev.title) : false;
-    document.querySelector(`input[name="scheduleFormStatus"][value="${isUnavailable ? '稼働不可' : '出勤'}"]`).checked = true;
   }
 }
 
@@ -2713,13 +2707,9 @@ async function saveScheduleForm() {
   if (!session) { showLoginScreen(); return; }
 
   const freeText = scheduleFormIsFreeText();
-  let title;
-  if (freeText) {
-    title = document.getElementById('scheduleFormTitleInput').value.trim() || '予定';
-  } else {
-    const checked = document.querySelector('input[name="scheduleFormStatus"]:checked');
-    title = checked ? checked.value : '出勤';
-  }
+  const title = freeText
+    ? (document.getElementById('scheduleFormTitleInput').value.trim() || '予定')
+    : '出勤';
 
   const date = document.getElementById('scheduleFormDate').value;
   const allDay = document.getElementById('scheduleFormAllDay').checked;
