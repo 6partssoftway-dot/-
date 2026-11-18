@@ -150,26 +150,26 @@
   .staff-card-footer { display:flex; justify-content:flex-end; margin-top:12px; }
   /* 予定表 */
   .schedule-month-nav { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
-  .schedule-month-nav button#scheduleMonthPrevBtn, .schedule-month-nav button#scheduleMonthNextBtn { background:none; border:1px solid var(--border); border-radius:4px; padding:6px 12px; cursor:pointer; font-size:14px; color:var(--blue); }
-  .schedule-month-label { font-size:16px; font-weight:700; color:var(--blue); min-width:110px; text-align:center; }
+  .schedule-month-nav button#scheduleMonthPrevBtn, .schedule-month-nav button#scheduleMonthNextBtn { background:none; border:1px solid var(--border); border-radius:4px; padding:7px 14px; cursor:pointer; font-size:16px; color:var(--blue); }
+  .schedule-month-label { font-size:18px; font-weight:700; color:var(--blue); min-width:120px; text-align:center; }
   .schedule-calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
-  .schedule-calendar-weekday { background:var(--blue-light); color:var(--blue); font-size:11px; font-weight:700; text-align:center; padding:6px 0; min-width:0; box-sizing:border-box; }
+  .schedule-calendar-weekday { background:var(--blue-light); color:var(--blue); font-size:13px; font-weight:700; text-align:center; padding:6px 0; min-width:0; box-sizing:border-box; }
   .schedule-calendar-cell { background:#fff; min-height:62px; padding:3px; cursor:pointer; min-width:0; overflow:hidden; box-sizing:border-box; }
   .schedule-calendar-cell.is-outside { background:var(--gray-light); cursor:default; }
   .schedule-calendar-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
-  .schedule-calendar-daynum { font-size:11px; width:18px; height:18px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  .schedule-calendar-daynum { font-size:13px; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border-radius:50%; }
   .schedule-calendar-cell.is-today .schedule-calendar-daynum { background:var(--blue); color:#fff; font-weight:700; }
   .schedule-calendar-cell.is-yearend { background:#fff4e5; }
   .schedule-calendar-cell.is-yearend.is-today .schedule-calendar-daynum { background:#e8710a; }
   .schedule-calendar-cell.is-busy { background:#e8f5ec; }
   .schedule-calendar-cell.is-busy.is-today .schedule-calendar-daynum { background:var(--green); }
-  .schedule-calendar-chip { font-size:9px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:1px 3px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; box-sizing:border-box; }
-  .schedule-calendar-more { font-size:9px; color:var(--gray); margin-top:2px; }
+  .schedule-calendar-chip { font-size:11px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:2px 4px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; box-sizing:border-box; }
+  .schedule-calendar-more { font-size:11px; color:var(--gray); margin-top:2px; }
   .schedule-view-tabs { display:flex; gap:6px; margin-bottom:10px; }
-  .schedule-view-tab-btn { background:var(--gray-light); border:1px solid var(--border); border-radius:14px; padding:5px 16px; font-size:12px; font-weight:600; color:var(--gray); cursor:pointer; }
+  .schedule-view-tab-btn { background:var(--gray-light); border:1px solid var(--border); border-radius:14px; padding:6px 18px; font-size:14px; font-weight:600; color:var(--gray); cursor:pointer; }
   .schedule-view-tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
   .schedule-matrix-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; }
-  .schedule-matrix-table { border-collapse:collapse; width:100%; font-size:11px; }
+  .schedule-matrix-table { border-collapse:collapse; width:100%; font-size:13px; }
   .schedule-matrix-table th, .schedule-matrix-table td { border:1px solid var(--border); padding:5px; vertical-align:top; }
   .schedule-matrix-corner { background:#fff; min-width:100px; }
   .schedule-matrix-datehead { background:var(--blue-light); color:var(--blue); text-align:center; font-weight:700; min-width:120px; cursor:pointer; white-space:nowrap; }
@@ -177,26 +177,32 @@
   .schedule-matrix-rowhead { text-align:left; font-weight:700; white-space:nowrap; min-width:100px; }
   .schedule-matrix-cell { min-width:120px; min-height:46px; cursor:pointer; }
   .schedule-matrix-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
-  .schedule-matrix-chip { font-size:10px; border-radius:3px; padding:2px 5px; margin-bottom:3px; white-space:normal; overflow-wrap:break-word; max-width:100%; box-sizing:border-box; }
-  .schedule-day-group-head { font-size:12px; font-weight:700; border-radius:4px; padding:5px 10px; margin:14px 0 6px; }
+  .schedule-matrix-chip { font-size:12px; border-radius:3px; padding:2px 5px; margin-bottom:3px; white-space:normal; overflow-wrap:break-word; max-width:100%; box-sizing:border-box; }
+  .schedule-day-group-head { font-size:14px; font-weight:700; border-radius:4px; padding:6px 10px; margin:14px 0 6px; }
   .schedule-day-group-head:first-child { margin-top:0; }
   .schedule-calendar-grid.is-week-mode .schedule-calendar-cell { min-height:180px; }
-  .schedule-calendar-grid.is-week-mode .schedule-calendar-chip { white-space:normal; font-size:11px; padding:2px 5px; }
+  .schedule-calendar-grid.is-week-mode .schedule-calendar-chip { white-space:normal; font-size:13px; padding:2px 5px; }
   .schedule-event.is-unavailable { background:#eceff1; }
   .schedule-event.is-unavailable .schedule-event-time { color:#616161; }
   .schedule-event.is-unavailable .schedule-event-cal { background:#e0e0e0; color:#616161; }
-  .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
-  .schedule-day-heading { font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+  .schedule-day-panel-title { font-size:15px; font-weight:700; color:var(--blue); margin-bottom:10px; }
+  .schedule-day-heading { font-size:15px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
   .schedule-day-heading:first-child { margin-top:0; }
   .schedule-event { border:1px solid var(--border); border-radius:6px; padding:10px 14px; margin-bottom:8px; background:var(--gray-light); }
   .schedule-event-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
-  .schedule-event-time { font-weight:700; color:var(--blue); font-size:14px; white-space:nowrap; }
-  .schedule-event-cal { font-size:11px; color:var(--gray); background:var(--blue-light); border-radius:10px; padding:2px 9px; white-space:nowrap; }
-  .schedule-event-title { font-size:15px; margin:4px 0 2px; }
-  .schedule-event-desc { font-size:12px; color:var(--gray); white-space:pre-wrap; margin-top:4px; }
+  .schedule-event-time { font-weight:700; color:var(--blue); font-size:16px; white-space:nowrap; }
+  .schedule-event-cal { font-size:13px; color:var(--gray); background:var(--blue-light); border-radius:10px; padding:2px 9px; white-space:nowrap; }
+  .schedule-event-title { font-size:17px; margin:4px 0 2px; }
+  .schedule-event-desc { font-size:14px; color:var(--gray); white-space:pre-wrap; margin-top:4px; }
   .schedule-event-actions { display:flex; gap:8px; margin-top:8px; }
-  .schedule-event-actions button { font-size:11px; padding:4px 10px; }
-  .schedule-confirm-row { margin-top:8px; font-size:12px; background:#fff3f0; border:1px solid #e8a8a0; border-radius:4px; padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .schedule-event-actions button { font-size:13px; padding:5px 12px; }
+  .schedule-confirm-row { margin-top:8px; font-size:14px; background:#fff3f0; border:1px solid #e8a8a0; border-radius:4px; padding:8px 10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  /* 予定表の画面全体は、他画面のフォームより文字を大きくする */
+  #scheduleScreen .field label { font-size:13px; }
+  #scheduleScreen .field input, #scheduleScreen .field select { font-size:16px; }
+  #scheduleScreen #scheduleYearEndNote, #scheduleScreen #scheduleAreaLegend { font-size:13px !important; }
+  .schedule-form-check { display:flex; align-items:center; justify-content:flex-start; gap:7px; font-size:14px; font-weight:400; color:var(--text, #1a202c); cursor:pointer; text-align:left; }
+  .schedule-form-check input[type="checkbox"] { width:17px; height:17px; min-width:17px; flex:none; padding:0; border:1px solid var(--border); accent-color:var(--blue); cursor:pointer; }
   .schedule-confirm-row button { font-size:11px; padding:4px 10px; }
   /* order sources */
   .order-source-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
@@ -756,8 +762,8 @@
           <label>日付 <span class="req">*</span></label>
           <input type="date" id="scheduleFormDate">
         </div>
-        <div class="field span-2">
-          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="scheduleFormAllDay"> 終日（時刻を指定せず1日分の予定にする）</label>
+        <div class="span-2" style="display:flex;flex-direction:column;gap:4px">
+          <label class="schedule-form-check"><input type="checkbox" id="scheduleFormAllDay"> 終日（時刻を指定せず1日分の予定にする）</label>
         </div>
         <div class="field span-2" id="scheduleFormTimeWrap">
           <label>開始〜終了時刻 <span class="req">*</span></label>
@@ -767,10 +773,10 @@
             <input type="time" id="scheduleFormEnd">
           </div>
         </div>
-        <div class="field span-2" id="scheduleFormTitleFixedWrap" hidden>
-          <label>内容</label>
-          <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:4px">
-            <input type="checkbox" id="scheduleFormAvailableCheck" checked disabled> 出勤可能
+        <div class="span-2" id="scheduleFormTitleFixedWrap" hidden style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:13px;font-weight:600;color:var(--gray)">内容</span>
+          <label class="schedule-form-check">
+            <input type="checkbox" id="scheduleFormAvailableCheck" checked> 出勤可能
           </label>
         </div>
         <div class="field span-2" id="scheduleFormTitleFreeWrap">
@@ -2249,6 +2255,8 @@ document.getElementById('scheduleFormCalendar').addEventListener('change', () =>
 document.getElementById('scheduleFormAllDay').addEventListener('change', () => {
   document.getElementById('scheduleFormTimeWrap').hidden = document.getElementById('scheduleFormAllDay').checked;
 });
+// 「出勤可能」は固定の文言なので、見た目は普通のチェックボックスのまま常にチェック状態を保つ
+document.getElementById('scheduleFormAvailableCheck').addEventListener('change', e => { e.target.checked = true; });
 document.querySelectorAll('.schedule-view-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (scheduleViewMode === btn.dataset.mode) return;
@@ -2584,10 +2592,11 @@ function renderScheduleDayPanel() {
       : sorted.map(x => scheduleEventCardHtml(x.ev, x.idx)).join('');
   }
 
+  const addBtnLabel = (session && session.role === 'admin') ? '＋ この日に追加' : '＋ 出勤可能日を追加';
   panel.innerHTML = `
     <div class="schedule-day-panel-title">${escapeHtml(formatDateJp(scheduleSelectedDate))}の予定</div>
     ${bodyHtml}
-    <button type="button" class="btn-add-row" id="scheduleDayAddBtn">＋ この日に追加</button>
+    <button type="button" class="btn-add-row" id="scheduleDayAddBtn">${addBtnLabel}</button>
   `;
   document.getElementById('scheduleDayAddBtn').addEventListener('click', () => openScheduleForm(null));
   wireScheduleEventCardButtons(panel);
@@ -2658,13 +2667,15 @@ function updateScheduleFormTitleMode(ev) {
   if (freeText) {
     document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
   }
+  document.getElementById('scheduleFormTitle').textContent = freeText
+    ? (ev ? '予定を編集' : '予定を追加')
+    : (ev ? '出勤可能日を編集' : '出勤可能日を追加');
 }
 
 function openScheduleForm(ev) {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
   scheduleEditingContext = ev ? { eventId: ev.id, calendarName: ev.calendarName } : null;
-  document.getElementById('scheduleFormTitle').textContent = ev ? '予定を編集' : '予定を追加';
   document.getElementById('scheduleFormError').textContent = '';
 
   const calWrap = document.getElementById('scheduleFormCalendarWrap');
