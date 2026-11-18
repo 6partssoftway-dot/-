@@ -94,7 +94,7 @@
   #successScreen p { font-size:13px; color:var(--gray); line-height:1.7; }
   .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
   .btn-download:hover { opacity:.9; }
-  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} .schedule-calendar-cell{min-height:46px;padding:2px;} .schedule-calendar-chip,.schedule-calendar-more{font-size:8px;} .schedule-calendar-daynum{font-size:10px;width:16px;height:16px;} .schedule-matrix-datehead,.schedule-matrix-cell{min-width:54px;} .schedule-matrix-rowhead{min-width:70px;} .schedule-matrix-chip{font-size:8px;} }
+  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} .schedule-calendar-cell{min-height:46px;padding:2px;} .schedule-calendar-chip,.schedule-calendar-more{font-size:8px;} .schedule-calendar-daynum{font-size:10px;width:16px;height:16px;} .schedule-matrix-datehead,.schedule-matrix-cell{min-width:96px;} .schedule-matrix-rowhead{min-width:78px;} .schedule-matrix-chip{font-size:9px;} }
   /* login */
   .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
   .login-body { padding:28px 24px; }
@@ -170,16 +170,21 @@
   .schedule-view-tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
   .schedule-matrix-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; }
   .schedule-matrix-table { border-collapse:collapse; width:100%; font-size:11px; }
-  .schedule-matrix-table th, .schedule-matrix-table td { border:1px solid var(--border); padding:4px; vertical-align:top; }
-  .schedule-matrix-corner { background:#fff; min-width:90px; }
-  .schedule-matrix-datehead { background:var(--blue-light); color:var(--blue); text-align:center; font-weight:700; min-width:76px; cursor:pointer; white-space:nowrap; }
+  .schedule-matrix-table th, .schedule-matrix-table td { border:1px solid var(--border); padding:5px; vertical-align:top; }
+  .schedule-matrix-corner { background:#fff; min-width:100px; }
+  .schedule-matrix-datehead { background:var(--blue-light); color:var(--blue); text-align:center; font-weight:700; min-width:120px; cursor:pointer; white-space:nowrap; }
   .schedule-matrix-datehead.is-today { background:var(--blue); color:#fff; }
-  .schedule-matrix-rowhead { text-align:left; font-weight:700; white-space:nowrap; min-width:90px; }
-  .schedule-matrix-cell { min-width:76px; min-height:40px; cursor:pointer; }
+  .schedule-matrix-rowhead { text-align:left; font-weight:700; white-space:nowrap; min-width:100px; }
+  .schedule-matrix-cell { min-width:120px; min-height:46px; cursor:pointer; }
   .schedule-matrix-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
-  .schedule-matrix-chip { font-size:9px; border-radius:3px; padding:1px 3px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; box-sizing:border-box; }
+  .schedule-matrix-chip { font-size:10px; border-radius:3px; padding:2px 5px; margin-bottom:3px; white-space:normal; overflow-wrap:break-word; max-width:100%; box-sizing:border-box; }
   .schedule-day-group-head { font-size:12px; font-weight:700; border-radius:4px; padding:5px 10px; margin:14px 0 6px; }
   .schedule-day-group-head:first-child { margin-top:0; }
+  .schedule-calendar-grid.is-week-mode .schedule-calendar-cell { min-height:180px; }
+  .schedule-calendar-grid.is-week-mode .schedule-calendar-chip { white-space:normal; font-size:11px; padding:2px 5px; }
+  .schedule-event.is-unavailable { background:#eceff1; }
+  .schedule-event.is-unavailable .schedule-event-time { color:#616161; }
+  .schedule-event.is-unavailable .schedule-event-cal { background:#e0e0e0; color:#616161; }
   .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
   .schedule-day-heading { font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
   .schedule-day-heading:first-child { margin-top:0; }
@@ -751,7 +756,10 @@
           <label>日付 <span class="req">*</span></label>
           <input type="date" id="scheduleFormDate">
         </div>
-        <div class="field">
+        <div class="field span-2">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400"><input type="checkbox" id="scheduleFormAllDay"> 終日（時刻を指定せず1日分の予定にする）</label>
+        </div>
+        <div class="field span-2" id="scheduleFormTimeWrap">
           <label>開始〜終了時刻 <span class="req">*</span></label>
           <div style="display:flex;gap:6px;align-items:center">
             <input type="time" id="scheduleFormStart">
@@ -759,9 +767,16 @@
             <input type="time" id="scheduleFormEnd">
           </div>
         </div>
-        <div class="field span-2">
-          <label>内容（任意・空欄なら「出勤可能」になります）</label>
-          <input type="text" id="scheduleFormTitleInput" placeholder="例：出勤可能／休み／午前のみ">
+        <div class="field span-2" id="scheduleFormTitleFixedWrap" hidden>
+          <label>内容 <span class="req">*</span></label>
+          <div style="display:flex;gap:16px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="radio" name="scheduleFormStatus" value="出勤"> 出勤</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="radio" name="scheduleFormStatus" value="稼働不可"> 稼働不可</label>
+          </div>
+        </div>
+        <div class="field span-2" id="scheduleFormTitleFreeWrap">
+          <label>内容</label>
+          <input type="text" id="scheduleFormTitleInput" placeholder="例：福岡 田中様／会議">
         </div>
       </div>
       <p id="scheduleFormError" class="error-msg"></p>
@@ -2202,6 +2217,18 @@ function buildScheduleAreaColors(areas) {
 function colorForArea(area) {
   return (area && scheduleAreaColorCache[area]) || SCHEDULE_AREA_FALLBACK;
 }
+// タイトルに「休み」「半休」などが含まれ、「出勤」を含まない場合は勤務不可の予定とみなす
+// （スタッフによって「休み」「出勤可能」など書き方がまちまちなため、表記ゆれを吸収してグレー表示する）
+const SCHEDULE_UNAVAILABLE_COLOR = { bg: '#e0e0e0', fg: '#616161' };
+function isScheduleUnavailable(title) {
+  const t = (title || '').trim();
+  if (!t) return false;
+  if (t === '稼働不可') return true; // スタッフが選ぶ固定の文言
+  return /休/.test(t) && !/出勤/.test(t); // 以前の自由入力（休み・お休みなど）との互換用
+}
+function colorForEvent(ev) {
+  return isScheduleUnavailable(ev.title) ? SCHEDULE_UNAVAILABLE_COLOR : colorForArea(ev.area);
+}
 function renderScheduleAreaLegend(areas) {
   const el = document.getElementById('scheduleAreaLegend');
   if (!areas || !areas.length) { el.hidden = true; return; }
@@ -2221,6 +2248,10 @@ document.getElementById('scheduleMonthPrevBtn').addEventListener('click', () => 
 document.getElementById('scheduleMonthNextBtn').addEventListener('click', () => changeScheduleRange(1));
 document.getElementById('scheduleFormCancelBtn').addEventListener('click', closeScheduleForm);
 document.getElementById('scheduleFormSaveBtn').addEventListener('click', saveScheduleForm);
+document.getElementById('scheduleFormCalendar').addEventListener('change', () => updateScheduleFormTitleMode(null));
+document.getElementById('scheduleFormAllDay').addEventListener('change', () => {
+  document.getElementById('scheduleFormTimeWrap').hidden = document.getElementById('scheduleFormAllDay').checked;
+});
 document.querySelectorAll('.schedule-view-tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if (scheduleViewMode === btn.dataset.mode) return;
@@ -2432,6 +2463,7 @@ function renderScheduleOverview() {
 
 function renderScheduleCalendarGrid(dateList) {
   const grid = document.getElementById('scheduleCalendarGrid');
+  grid.classList.toggle('is-week-mode', scheduleViewMode === 'week');
   const todayStr = localDateStr();
 
   const eventsByDay = {};
@@ -2443,7 +2475,8 @@ function renderScheduleCalendarGrid(dateList) {
   const weekdayHtml = ['日', '月', '火', '水', '木', '金', '土']
     .map(w => `<div class="schedule-calendar-weekday">${w}</div>`).join('');
 
-  const maxShow = 3;
+  // 週表示は1行だけで縦に余裕があるため、月表示より多くの予定をそのまま表示する
+  const maxShow = scheduleViewMode === 'week' ? 10 : 3;
   let cellsHtml = '';
   dateList.forEach(dateStr => {
     if (!dateStr) { cellsHtml += `<div class="schedule-calendar-cell is-outside"></div>`; return; }
@@ -2454,7 +2487,7 @@ function renderScheduleCalendarGrid(dateList) {
     const isYearEnd = isYearEndNewYearDate(dateStr);
     const isBusy = !isYearEnd && isBusySeasonDate(dateStr);
     const chips = dayEvents.slice(0, maxShow).map(ev => {
-      const c = colorForArea(ev.area);
+      const c = colorForEvent(ev);
       return `<div class="schedule-calendar-chip" style="background:${c.bg};color:${c.fg}">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`;
     }).join('');
     const more = dayEvents.length > maxShow ? `<div class="schedule-calendar-more">+${dayEvents.length - maxShow}件</div>` : '';
@@ -2504,7 +2537,7 @@ function renderScheduleMatrix(dateList) {
       const dayEvents = (eventsByDayAndCal[key] || []).slice().sort((a, b) => a.start.localeCompare(b.start));
       const isSelected = d === scheduleSelectedDate;
       const chips = dayEvents.map(ev => {
-        const ec = colorForArea(ev.area);
+        const ec = colorForEvent(ev);
         return `<div class="schedule-matrix-chip" style="background:${ec.bg};color:${ec.fg}">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`;
       }).join('');
       return `<td class="schedule-matrix-cell${isSelected ? ' is-selected' : ''}" data-date="${d}">${chips}</td>`;
@@ -2590,7 +2623,7 @@ function scheduleEventCardHtml(ev, idx) {
   const startTime = (ev.start || '').slice(11, 16);
   const endTime = (ev.end || '').slice(11, 16);
   return `
-    <div class="schedule-event">
+    <div class="schedule-event${isScheduleUnavailable(ev.title) ? ' is-unavailable' : ''}">
       <div class="schedule-event-top">
         <span class="schedule-event-time">${escapeHtml(startTime)}〜${escapeHtml(endTime)}</span>
         <span class="schedule-event-cal">${escapeHtml(ev.calendarName)}</span>
@@ -2610,6 +2643,29 @@ function scheduleEventCardHtml(ev, idx) {
     </div>`;
 }
 
+// 対象カレンダーが「仕事」（オーナー自身の予定）かどうか。スタッフのカレンダーは稼働予定の
+// 登録用なので文言を「出勤／稼働不可」に固定し、オーナー自身の「仕事」カレンダーだけ
+// これまで通り自由入力にする（客先名など実際の予定タイトルを書けるようにするため）。
+function scheduleFormIsFreeText() {
+  const session = getSession();
+  if (!session) return true;
+  if (session.role !== 'admin') return false;
+  const calSel = document.getElementById('scheduleFormCalendar');
+  return !calSel.value || calSel.value === '仕事';
+}
+
+function updateScheduleFormTitleMode(ev) {
+  const freeText = scheduleFormIsFreeText();
+  document.getElementById('scheduleFormTitleFreeWrap').hidden = !freeText;
+  document.getElementById('scheduleFormTitleFixedWrap').hidden = freeText;
+  if (freeText) {
+    document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
+  } else {
+    const isUnavailable = ev ? isScheduleUnavailable(ev.title) : false;
+    document.querySelector(`input[name="scheduleFormStatus"][value="${isUnavailable ? '稼働不可' : '出勤'}"]`).checked = true;
+  }
+}
+
 function openScheduleForm(ev) {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
@@ -2627,8 +2683,11 @@ function openScheduleForm(ev) {
   } else {
     calWrap.hidden = true;
   }
+  updateScheduleFormTitleMode(ev);
 
-  document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
+  const isAllDay = !!ev && ev.start.slice(11, 16) === '00:00' && ev.end.slice(11, 16) === '23:59';
+  document.getElementById('scheduleFormAllDay').checked = isAllDay;
+  document.getElementById('scheduleFormTimeWrap').hidden = isAllDay;
   if (ev) {
     document.getElementById('scheduleFormDate').value = ev.start.slice(0, 10);
     document.getElementById('scheduleFormStart').value = ev.start.slice(11, 16);
@@ -2653,12 +2712,22 @@ async function saveScheduleForm() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
 
-  const title = document.getElementById('scheduleFormTitleInput').value.trim() || '出勤可能';
+  const freeText = scheduleFormIsFreeText();
+  let title;
+  if (freeText) {
+    title = document.getElementById('scheduleFormTitleInput').value.trim() || '予定';
+  } else {
+    const checked = document.querySelector('input[name="scheduleFormStatus"]:checked');
+    title = checked ? checked.value : '出勤';
+  }
+
   const date = document.getElementById('scheduleFormDate').value;
-  const startTime = document.getElementById('scheduleFormStart').value;
-  const endTime = document.getElementById('scheduleFormEnd').value;
-  if (!date || !startTime || !endTime) { errEl.textContent = '日付と開始・終了時刻を入力してください'; return; }
-  if (endTime <= startTime) { errEl.textContent = '終了時刻は開始時刻より後にしてください'; return; }
+  const allDay = document.getElementById('scheduleFormAllDay').checked;
+  const startTime = allDay ? '00:00' : document.getElementById('scheduleFormStart').value;
+  const endTime = allDay ? '23:59' : document.getElementById('scheduleFormEnd').value;
+  if (!date) { errEl.textContent = '日付を入力してください'; return; }
+  if (!allDay && (!startTime || !endTime)) { errEl.textContent = '開始・終了時刻を入力してください（時刻を指定しない場合は「終日」にチェックしてください）'; return; }
+  if (!allDay && endTime <= startTime) { errEl.textContent = '終了時刻は開始時刻より後にしてください'; return; }
 
   const calendarName = scheduleEditingContext
     ? scheduleEditingContext.calendarName
