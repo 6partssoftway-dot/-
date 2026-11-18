@@ -767,6 +767,12 @@
             <input type="time" id="scheduleFormEnd">
           </div>
         </div>
+        <div class="field span-2" id="scheduleFormTitleFixedWrap" hidden>
+          <label>内容</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;margin-top:4px">
+            <input type="checkbox" id="scheduleFormAvailableCheck" checked disabled> 出勤可能
+          </label>
+        </div>
         <div class="field span-2" id="scheduleFormTitleFreeWrap">
           <label>内容</label>
           <input type="text" id="scheduleFormTitleInput" placeholder="例：福岡 田中様／会議">
@@ -2210,22 +2216,15 @@ function buildScheduleAreaColors(areas) {
 function colorForArea(area) {
   return (area && scheduleAreaColorCache[area]) || SCHEDULE_AREA_FALLBACK;
 }
-// タイトルに「休み」「半休」などが含まれ、「出勤」を含まない場合は勤務不可の予定とみなす
-// （スタッフによって「休み」「出勤可能」など書き方がまちまちなため、表記ゆれを吸収してグレー表示する）
-const SCHEDULE_UNAVAILABLE_COLOR = { bg: '#e0e0e0', fg: '#616161' };
+// 過去の自由入力（「休み」「お休み」など、「出勤」を含まないもの）との互換用。現在は固定文言
+// 「出勤可能」のみのため新規には該当しないが、過去に作成済みの予定の表示に使う。
 function isScheduleUnavailable(title) {
   const t = (title || '').trim();
-  if (!t) return false;
-  if (t === '稼働不可') return true; // スタッフが選ぶ固定の文言
-  return /休/.test(t) && !/出勤/.test(t); // 以前の自由入力（休み・お休みなど）との互換用
+  return !!t && /休/.test(t) && !/出勤/.test(t);
 }
-// 枠（チップ）の色は「出勤」の予定だけをエリアの色で表示する。「稼働不可」はもちろん、
-// それ以外（「仕事」カレンダーの客先予定など自由入力のもの）はすべて灰色にする。
-function isScheduleAvailable(title) {
-  return (title || '').trim().indexOf('出勤') === 0;
-}
+// 枠（チップ）の色はエリアの色で統一する（担当者・「仕事」カレンダーいずれも同じ基準）
 function colorForEvent(ev) {
-  return isScheduleAvailable(ev.title) ? colorForArea(ev.area) : SCHEDULE_UNAVAILABLE_COLOR;
+  return colorForArea(ev.area);
 }
 function renderScheduleAreaLegend(areas) {
   const el = document.getElementById('scheduleAreaLegend');
@@ -2655,6 +2654,7 @@ function scheduleFormIsFreeText() {
 function updateScheduleFormTitleMode(ev) {
   const freeText = scheduleFormIsFreeText();
   document.getElementById('scheduleFormTitleFreeWrap').hidden = !freeText;
+  document.getElementById('scheduleFormTitleFixedWrap').hidden = freeText;
   if (freeText) {
     document.getElementById('scheduleFormTitleInput').value = ev ? ev.title : '';
   }
@@ -2709,7 +2709,7 @@ async function saveScheduleForm() {
   const freeText = scheduleFormIsFreeText();
   const title = freeText
     ? (document.getElementById('scheduleFormTitleInput').value.trim() || '予定')
-    : '出勤';
+    : '出勤可能';
 
   const date = document.getElementById('scheduleFormDate').value;
   const allDay = document.getElementById('scheduleFormAllDay').checked;
