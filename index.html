@@ -94,7 +94,7 @@
   #successScreen p { font-size:13px; color:var(--gray); line-height:1.7; }
   .btn-download { background:var(--green); color:#fff; border:none; border-radius:4px; padding:12px 28px; font-size:14px; font-weight:700; cursor:pointer; margin-top:18px; letter-spacing:.03em; }
   .btn-download:hover { opacity:.9; }
-  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} .schedule-calendar-cell{min-height:46px;padding:2px;} .schedule-calendar-chip,.schedule-calendar-more{font-size:8px;} .schedule-calendar-daynum{font-size:10px;width:16px;height:16px;} }
+  @media(max-width:600px){ .grid-2{grid-template-columns:1fr;} .span-2{grid-column:span 1;} body{padding:8px;} .notes-input{max-width:120px;} .email-row{flex-wrap:wrap;} .email-row input,.email-row select{flex:1 1 100%;} .staff-field-grid{grid-template-columns:1fr !important;} .schedule-calendar-cell{min-height:46px;padding:2px;} .schedule-calendar-chip,.schedule-calendar-more{font-size:8px;} .schedule-calendar-daynum{font-size:10px;width:16px;height:16px;} .schedule-matrix-datehead,.schedule-matrix-cell{min-width:54px;} .schedule-matrix-rowhead{min-width:70px;} .schedule-matrix-chip{font-size:8px;} }
   /* login */
   .login-page { max-width:360px; margin:60px auto; background:var(--white); border:2px solid var(--blue); border-radius:4px; overflow:hidden; }
   .login-body { padding:28px 24px; }
@@ -165,6 +165,21 @@
   .schedule-calendar-cell.is-busy.is-today .schedule-calendar-daynum { background:var(--green); }
   .schedule-calendar-chip { font-size:9px; background:var(--blue-light); color:var(--blue); border-radius:3px; padding:1px 3px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; box-sizing:border-box; }
   .schedule-calendar-more { font-size:9px; color:var(--gray); margin-top:2px; }
+  .schedule-view-tabs { display:flex; gap:6px; margin-bottom:10px; }
+  .schedule-view-tab-btn { background:var(--gray-light); border:1px solid var(--border); border-radius:14px; padding:5px 16px; font-size:12px; font-weight:600; color:var(--gray); cursor:pointer; }
+  .schedule-view-tab-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .schedule-matrix-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:6px; }
+  .schedule-matrix-table { border-collapse:collapse; width:100%; font-size:11px; }
+  .schedule-matrix-table th, .schedule-matrix-table td { border:1px solid var(--border); padding:4px; vertical-align:top; }
+  .schedule-matrix-corner { background:#fff; min-width:90px; }
+  .schedule-matrix-datehead { background:var(--blue-light); color:var(--blue); text-align:center; font-weight:700; min-width:76px; cursor:pointer; white-space:nowrap; }
+  .schedule-matrix-datehead.is-today { background:var(--blue); color:#fff; }
+  .schedule-matrix-rowhead { text-align:left; font-weight:700; white-space:nowrap; min-width:90px; }
+  .schedule-matrix-cell { min-width:76px; min-height:40px; cursor:pointer; }
+  .schedule-matrix-cell.is-selected { box-shadow:inset 0 0 0 2px var(--blue); }
+  .schedule-matrix-chip { font-size:9px; border-radius:3px; padding:1px 3px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; box-sizing:border-box; }
+  .schedule-day-group-head { font-size:12px; font-weight:700; border-radius:4px; padding:5px 10px; margin:14px 0 6px; }
+  .schedule-day-group-head:first-child { margin-top:0; }
   .schedule-day-panel-title { font-size:13px; font-weight:700; color:var(--blue); margin-bottom:10px; }
   .schedule-day-heading { font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border); }
   .schedule-day-heading:first-child { margin-top:0; }
@@ -698,6 +713,11 @@
     <p id="scheduleScopeNote">Googleカレンダーと連携しています</p>
   </div>
   <div class="section">
+    <div class="schedule-view-tabs">
+      <button type="button" class="schedule-view-tab-btn active" data-mode="month">月</button>
+      <button type="button" class="schedule-view-tab-btn" data-mode="week">週</button>
+      <button type="button" class="schedule-view-tab-btn" data-mode="day">日</button>
+    </div>
     <div class="schedule-month-nav">
       <button type="button" id="scheduleMonthPrevBtn">◀</button>
       <span class="schedule-month-label" id="scheduleMonthLabel"></span>
@@ -712,8 +732,10 @@
     </div>
     <p id="scheduleError" class="error-msg"></p>
     <div id="scheduleYearEndNote" hidden style="font-size:12px;color:#8a4b00;background:#fff4e5;border:1px solid #f0b46a;border-radius:4px;padding:6px 10px;margin-bottom:8px"></div>
+    <div id="scheduleAreaLegend" hidden style="font-size:11px;margin-bottom:8px"></div>
 
     <div class="schedule-calendar-grid" id="scheduleCalendarGrid"></div>
+    <div class="schedule-matrix-wrap" id="scheduleMatrixGrid" hidden></div>
     <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間　🟩 繁忙期対応加算の対象期間（3・4月）</div>
 
     <div id="scheduleDayPanel" style="margin-top:18px"></div>
@@ -2149,22 +2171,66 @@ async function handleReceiptReissueAction(mode) {
   }
 }
 
-// ===== 予定表（Googleカレンダー連携・月表示） =====
+// ===== 予定表（Googleカレンダー連携・月／週／日表示） =====
 let scheduleEventsCache = [];
 let scheduleStaffOptions = [];
+let scheduleCalendarAreas = {}; // カレンダー名（スタッフ名）→担当エリア（管理者のみ使用）
 let scheduleEditingContext = null; // 編集中の予定 { eventId, calendarName }、新規作成時はnull
-let scheduleCurrentMonth = null; // その月の1日（Dateオブジェクト）
-let scheduleSelectedDate = null; // 'YYYY-MM-DD'（カレンダー上で選択中の日）
+let scheduleViewMode = 'month'; // 'month' | 'week' | 'day'
+let scheduleAnchorDate = null; // 基準日（Dateオブジェクト。月表示はその月の1日、週表示はその週内の日、日表示はその日）
+let scheduleSelectedDate = null; // 'YYYY-MM-DD'（カレンダー／マトリクス上で選択中の日。下の詳細パネルに表示される）
+
+// エリアごとに色を振り分ける（担当者が多くても一目で見分けられるように）
+const SCHEDULE_AREA_PALETTE = [
+  { bg: '#e3f2fd', fg: '#1565c0' },
+  { bg: '#e8f5e9', fg: '#2e7d32' },
+  { bg: '#fff3e0', fg: '#e65100' },
+  { bg: '#fce4ec', fg: '#ad1457' },
+  { bg: '#f3e5f5', fg: '#6a1b9a' },
+  { bg: '#e0f7fa', fg: '#00838f' },
+  { bg: '#fff8e1', fg: '#9e7300' },
+  { bg: '#efebe9', fg: '#4e342e' },
+  { bg: '#e8eaf6', fg: '#283593' },
+  { bg: '#fbe9e7', fg: '#bf360c' },
+];
+const SCHEDULE_AREA_FALLBACK = { bg: 'var(--blue-light)', fg: 'var(--blue)' }; // エリア不明・スタッフ本人のみ表示時は従来の青色のまま
+let scheduleAreaColorCache = {};
+function buildScheduleAreaColors(areas) {
+  scheduleAreaColorCache = {};
+  areas.forEach((a, i) => { scheduleAreaColorCache[a] = SCHEDULE_AREA_PALETTE[i % SCHEDULE_AREA_PALETTE.length]; });
+}
+function colorForArea(area) {
+  return (area && scheduleAreaColorCache[area]) || SCHEDULE_AREA_FALLBACK;
+}
+function renderScheduleAreaLegend(areas) {
+  const el = document.getElementById('scheduleAreaLegend');
+  if (!areas || !areas.length) { el.hidden = true; return; }
+  el.innerHTML = areas.map(a => {
+    const c = colorForArea(a);
+    return `<span style="display:inline-flex;align-items:center;gap:3px;margin-right:10px"><span style="width:10px;height:10px;border-radius:50%;background:${c.bg};border:1px solid ${c.fg};display:inline-block"></span>${escapeHtml(a)}</span>`;
+  }).join('');
+  el.hidden = false;
+}
 
 document.getElementById('scheduleOpenBtn').addEventListener('click', openScheduleScreen);
 document.getElementById('selectScheduleOpenBtn').addEventListener('click', openScheduleScreen);
 document.getElementById('scheduleBackBtn').addEventListener('click', closeScheduleScreen);
 document.getElementById('scheduleRefreshBtn').addEventListener('click', loadScheduleEvents);
 document.getElementById('scheduleArea').addEventListener('change', loadScheduleEvents);
-document.getElementById('scheduleMonthPrevBtn').addEventListener('click', () => changeScheduleMonth(-1));
-document.getElementById('scheduleMonthNextBtn').addEventListener('click', () => changeScheduleMonth(1));
+document.getElementById('scheduleMonthPrevBtn').addEventListener('click', () => changeScheduleRange(-1));
+document.getElementById('scheduleMonthNextBtn').addEventListener('click', () => changeScheduleRange(1));
 document.getElementById('scheduleFormCancelBtn').addEventListener('click', closeScheduleForm);
 document.getElementById('scheduleFormSaveBtn').addEventListener('click', saveScheduleForm);
+document.querySelectorAll('.schedule-view-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (scheduleViewMode === btn.dataset.mode) return;
+    scheduleViewMode = btn.dataset.mode;
+    document.querySelectorAll('.schedule-view-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    if (scheduleViewMode === 'day') scheduleSelectedDate = localDateStr(scheduleAnchorDate);
+    renderScheduleRangeLabel();
+    loadScheduleEvents();
+  });
+});
 
 function formatDateJp(dayStr) {
   const [y, m, d] = dayStr.split('-').map(Number);
@@ -2173,15 +2239,51 @@ function formatDateJp(dayStr) {
   return `${m}月${d}日（${w}）`;
 }
 
-function renderScheduleMonthLabel() {
-  document.getElementById('scheduleMonthLabel').textContent =
-    `${scheduleCurrentMonth.getFullYear()}年${scheduleCurrentMonth.getMonth() + 1}月`;
+// 現在の表示モード（月／週／日）に応じた表示対象期間を返す（どちらもDateオブジェクト）
+function getScheduleRange() {
+  const d = scheduleAnchorDate;
+  if (scheduleViewMode === 'month') {
+    const y = d.getFullYear(), m = d.getMonth();
+    return { from: new Date(y, m, 1), to: new Date(y, m + 1, 0) };
+  }
+  if (scheduleViewMode === 'week') {
+    const start = new Date(d);
+    start.setDate(start.getDate() - start.getDay());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return { from: start, to: end };
+  }
+  return { from: new Date(d), to: new Date(d) };
 }
 
-function changeScheduleMonth(delta) {
-  scheduleCurrentMonth = new Date(scheduleCurrentMonth.getFullYear(), scheduleCurrentMonth.getMonth() + delta, 1);
-  scheduleSelectedDate = null;
-  renderScheduleMonthLabel();
+function renderScheduleRangeLabel() {
+  const label = document.getElementById('scheduleMonthLabel');
+  const { from, to } = getScheduleRange();
+  if (scheduleViewMode === 'month') {
+    label.textContent = `${scheduleAnchorDate.getFullYear()}年${scheduleAnchorDate.getMonth() + 1}月`;
+  } else if (scheduleViewMode === 'week') {
+    label.textContent = `${formatYmdJp(from)}〜${formatYmdJp(to)}`;
+  } else {
+    label.textContent = formatDateJp(localDateStr(scheduleAnchorDate));
+  }
+}
+
+function changeScheduleRange(delta) {
+  if (scheduleViewMode === 'month') {
+    scheduleAnchorDate = new Date(scheduleAnchorDate.getFullYear(), scheduleAnchorDate.getMonth() + delta, 1);
+    scheduleSelectedDate = null;
+  } else if (scheduleViewMode === 'week') {
+    const d = new Date(scheduleAnchorDate);
+    d.setDate(d.getDate() + delta * 7);
+    scheduleAnchorDate = d;
+    scheduleSelectedDate = null;
+  } else {
+    const d = new Date(scheduleAnchorDate);
+    d.setDate(d.getDate() + delta);
+    scheduleAnchorDate = d;
+    scheduleSelectedDate = localDateStr(d);
+  }
+  renderScheduleRangeLabel();
   loadScheduleEvents();
 }
 
@@ -2199,13 +2301,14 @@ function openScheduleScreen() {
   const areaWrap = document.getElementById('scheduleAreaWrap');
   areaWrap.hidden = session.role !== 'admin';
 
-  if (!scheduleCurrentMonth) {
-    const today = new Date();
-    scheduleCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    scheduleSelectedDate = localDateStr(today);
+  if (!scheduleAnchorDate) {
+    scheduleAnchorDate = new Date();
+    scheduleAnchorDate.setHours(0, 0, 0, 0);
+    scheduleSelectedDate = localDateStr(scheduleAnchorDate);
   }
+  document.querySelectorAll('.schedule-view-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === scheduleViewMode));
   closeScheduleForm();
-  renderScheduleMonthLabel();
+  renderScheduleRangeLabel();
   loadScheduleEvents();
 }
 
@@ -2220,9 +2323,9 @@ async function loadScheduleEvents() {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
 
-  const y = scheduleCurrentMonth.getFullYear(), m = scheduleCurrentMonth.getMonth();
-  const fromDate = localDateStr(new Date(y, m, 1));
-  const toDate = localDateStr(new Date(y, m + 1, 0));
+  const { from, to } = getScheduleRange();
+  const fromDate = localDateStr(from);
+  const toDate = localDateStr(to);
   const prefecture = session.role === 'admin' ? document.getElementById('scheduleArea').value : '';
 
   const btn = document.getElementById('scheduleRefreshBtn');
@@ -2231,14 +2334,19 @@ async function loadScheduleEvents() {
     const result = await gasCall('getScheduleEvents', { session: session.token, fromDate, toDate, prefecture });
     scheduleStaffOptions = result.calendarNames || [];
     scheduleEventsCache = result.events || [];
+    scheduleCalendarAreas = result.calendarAreas || {};
     if (session.role === 'admin') {
       const areaSel = document.getElementById('scheduleArea');
       const currentVal = areaSel.value;
       const areas = result.allAreas || [];
+      buildScheduleAreaColors(areas);
       areaSel.innerHTML = '<option value="">全体</option>' +
         areas.map(p => `<option${p === currentVal ? ' selected' : ''}>${escapeHtml(p)}</option>`).join('');
+      renderScheduleAreaLegend(areas);
+    } else {
+      document.getElementById('scheduleAreaLegend').hidden = true;
     }
-    renderScheduleCalendarGrid();
+    renderScheduleOverview();
     renderScheduleDayPanel();
   } catch (err) {
     errEl.textContent = err.message;
@@ -2248,11 +2356,82 @@ async function loadScheduleEvents() {
   }
 }
 
-function renderScheduleCalendarGrid() {
-  const grid = document.getElementById('scheduleCalendarGrid');
-  const y = scheduleCurrentMonth.getFullYear(), m = scheduleCurrentMonth.getMonth();
+// 表示中の期間（月／週／日）のどこかが年末年始・繁忙期の加算対象にかかっていれば文章で知らせる
+function updateScheduleRangeNote(fromDate, toDate) {
+  const noteEl = document.getElementById('scheduleYearEndNote');
+  let yearEndWin = null, hasBusy = false;
+  const cur = new Date(fromDate);
+  while (cur <= toDate) {
+    const ds = localDateStr(cur);
+    if (isYearEndNewYearDate(ds)) yearEndWin = getYearEndNewYearWindow(ds);
+    if (isBusySeasonDate(ds)) hasBusy = true;
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (yearEndWin) {
+    const item = ITEMS.find(i => i.id === 'yearend') || {};
+    noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(yearEndWin.start)}〜${formatYmdJp(yearEndWin.end)}（+${formatYen(item.price)}・税抜／オレンジ色の日付）`;
+    noteEl.hidden = false;
+  } else if (hasBusy) {
+    const item = ITEMS.find(i => i.id === 'busy') || {};
+    noteEl.textContent = `⚠ 繁忙期対応加算の対象期間：3月・4月すべて（+${formatYen(item.price)}・税抜／緑色の日付）`;
+    noteEl.hidden = false;
+  } else {
+    noteEl.hidden = true;
+  }
+}
+
+// 月表示・週表示（スタッフ本人）で使う日付の並び（'YYYY-MM-DD'、月表示の前後の空白セルはnull）を作る
+function buildScheduleDateListForOverview() {
+  if (scheduleViewMode === 'week') {
+    const { from } = getScheduleRange();
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(from);
+      d.setDate(from.getDate() + i);
+      dates.push(localDateStr(d));
+    }
+    return dates;
+  }
+  const y = scheduleAnchorDate.getFullYear(), m = scheduleAnchorDate.getMonth();
   const startOffset = new Date(y, m, 1).getDay();
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  const dates = [];
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    dates.push(dayNum < 1 || dayNum > daysInMonth ? null : `${y}-${String(m + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`);
+  }
+  return dates;
+}
+
+// 表示モードに応じて、カレンダー本体（月表示・週表示）とマトリクス（管理者の週表示）を切り替える。
+// 日表示は本体を表示せず、下の詳細パネル（renderScheduleDayPanel）だけで十分なので非表示にする。
+function renderScheduleOverview() {
+  const { from, to } = getScheduleRange();
+  updateScheduleRangeNote(from, to);
+  const session = getSession();
+  const gridEl = document.getElementById('scheduleCalendarGrid');
+  const matrixEl = document.getElementById('scheduleMatrixGrid');
+
+  if (scheduleViewMode === 'day') {
+    gridEl.hidden = true;
+    matrixEl.hidden = true;
+    return;
+  }
+  const dateList = buildScheduleDateListForOverview();
+  if (scheduleViewMode === 'week' && session && session.role === 'admin') {
+    gridEl.hidden = true;
+    matrixEl.hidden = false;
+    renderScheduleMatrix(dateList);
+  } else {
+    matrixEl.hidden = true;
+    gridEl.hidden = false;
+    renderScheduleCalendarGrid(dateList);
+  }
+}
+
+function renderScheduleCalendarGrid(dateList) {
+  const grid = document.getElementById('scheduleCalendarGrid');
   const todayStr = localDateStr();
 
   const eventsByDay = {};
@@ -2264,70 +2443,120 @@ function renderScheduleCalendarGrid() {
   const weekdayHtml = ['日', '月', '火', '水', '木', '金', '土']
     .map(w => `<div class="schedule-calendar-weekday">${w}</div>`).join('');
 
-  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
   const maxShow = 3;
   let cellsHtml = '';
-  for (let i = 0; i < totalCells; i++) {
-    const dayNum = i - startOffset + 1;
-    if (dayNum < 1 || dayNum > daysInMonth) {
-      cellsHtml += `<div class="schedule-calendar-cell is-outside"></div>`;
-      continue;
-    }
-    const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+  dateList.forEach(dateStr => {
+    if (!dateStr) { cellsHtml += `<div class="schedule-calendar-cell is-outside"></div>`; return; }
+    const dayNum = Number(dateStr.slice(8, 10));
     const dayEvents = (eventsByDay[dateStr] || []).slice().sort((a, b) => a.start.localeCompare(b.start));
     const isToday = dateStr === todayStr;
     const isSelected = dateStr === scheduleSelectedDate;
     const isYearEnd = isYearEndNewYearDate(dateStr);
     const isBusy = !isYearEnd && isBusySeasonDate(dateStr);
-    const chips = dayEvents.slice(0, maxShow).map(ev =>
-      `<div class="schedule-calendar-chip">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`
-    ).join('');
+    const chips = dayEvents.slice(0, maxShow).map(ev => {
+      const c = colorForArea(ev.area);
+      return `<div class="schedule-calendar-chip" style="background:${c.bg};color:${c.fg}">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`;
+    }).join('');
     const more = dayEvents.length > maxShow ? `<div class="schedule-calendar-more">+${dayEvents.length - maxShow}件</div>` : '';
     cellsHtml += `
       <div class="schedule-calendar-cell${isToday ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}${isYearEnd ? ' is-yearend' : ''}${isBusy ? ' is-busy' : ''}" data-date="${dateStr}">
         <div class="schedule-calendar-daynum">${dayNum}</div>
         ${chips}${more}
       </div>`;
-  }
+  });
   grid.innerHTML = weekdayHtml + cellsHtml;
   grid.querySelectorAll('.schedule-calendar-cell[data-date]').forEach(cell => {
     cell.addEventListener('click', () => {
       scheduleSelectedDate = cell.dataset.date;
-      renderScheduleCalendarGrid();
+      renderScheduleOverview();
       renderScheduleDayPanel();
     });
   });
+}
 
-  // 表示中の月が年末年始加算・繁忙期対応加算のいずれかの対象期間にかかっていれば、金額入りで文章でも示す
-  const noteEl = document.getElementById('scheduleYearEndNote');
-  const yearEndWin = (m === 11) ? { start: lastSaturdayOfDec(y), end: fifthOfJan(y + 1) }
-    : (m === 0) ? { start: lastSaturdayOfDec(y - 1), end: fifthOfJan(y) }
-    : null;
-  if (yearEndWin) {
-    const item = ITEMS.find(i => i.id === 'yearend') || {};
-    noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(yearEndWin.start)}〜${formatYmdJp(yearEndWin.end)}（+${formatYen(item.price)}・税抜／オレンジ色の日付）`;
-    noteEl.hidden = false;
-  } else if (m === 2 || m === 3) {
-    const item = ITEMS.find(i => i.id === 'busy') || {};
-    noteEl.textContent = `⚠ 繁忙期対応加算の対象期間：3月・4月すべて（+${formatYen(item.price)}・税抜／緑色の日付）`;
-    noteEl.hidden = false;
-  } else {
-    noteEl.hidden = true;
-  }
+// 管理者の週表示：担当者×日付のマトリクス表示（行＝担当者、列＝その週の7日間）
+function renderScheduleMatrix(dateList) {
+  const wrap = document.getElementById('scheduleMatrixGrid');
+  const todayStr = localDateStr();
+
+  const eventsByDayAndCal = {};
+  scheduleEventsCache.forEach(ev => {
+    const day = (ev.start || '').slice(0, 10);
+    const key = day + '|' + ev.calendarName;
+    (eventsByDayAndCal[key] = eventsByDayAndCal[key] || []).push(ev);
+  });
+
+  const headCellsHtml = dateList.map(d => {
+    const dt = new Date(d + 'T00:00:00');
+    const w = ['日', '月', '火', '水', '木', '金', '土'][dt.getDay()];
+    const isToday = d === todayStr;
+    return `<th class="schedule-matrix-datehead${isToday ? ' is-today' : ''}" data-date="${d}">${dt.getDate()}(${w})</th>`;
+  }).join('');
+  const headHtml = `<tr><th class="schedule-matrix-corner"></th>${headCellsHtml}</tr>`;
+
+  const rows = scheduleStaffOptions.length ? scheduleStaffOptions : [];
+  const bodyHtml = rows.map(name => {
+    const area = scheduleCalendarAreas[name] || '';
+    const c = colorForArea(area);
+    const label = name === '仕事' ? '仕事（オーナー）' : name;
+    const rowCellsHtml = dateList.map(d => {
+      const key = d + '|' + name;
+      const dayEvents = (eventsByDayAndCal[key] || []).slice().sort((a, b) => a.start.localeCompare(b.start));
+      const isSelected = d === scheduleSelectedDate;
+      const chips = dayEvents.map(ev => {
+        const ec = colorForArea(ev.area);
+        return `<div class="schedule-matrix-chip" style="background:${ec.bg};color:${ec.fg}">${escapeHtml(ev.start.slice(11, 16))} ${escapeHtml(ev.title || '')}</div>`;
+      }).join('');
+      return `<td class="schedule-matrix-cell${isSelected ? ' is-selected' : ''}" data-date="${d}">${chips}</td>`;
+    }).join('');
+    return `<tr><th class="schedule-matrix-rowhead" style="background:${c.bg};color:${c.fg}">${escapeHtml(label)}</th>${rowCellsHtml}</tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="schedule-matrix-table"><thead>${headHtml}</thead><tbody>${bodyHtml}</tbody></table>`;
+  wrap.querySelectorAll('[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      scheduleSelectedDate = cell.dataset.date;
+      renderScheduleOverview();
+      renderScheduleDayPanel();
+    });
+  });
 }
 
 function renderScheduleDayPanel() {
   const panel = document.getElementById('scheduleDayPanel');
   if (!scheduleSelectedDate) { panel.innerHTML = ''; return; }
-  const dayEvents = scheduleEventsCache
+  const session = getSession();
+  const dayEntries = scheduleEventsCache
     .map((ev, idx) => ({ ev, idx }))
-    .filter(x => (x.ev.start || '').slice(0, 10) === scheduleSelectedDate)
-    .sort((a, b) => a.ev.start.localeCompare(b.ev.start));
+    .filter(x => (x.ev.start || '').slice(0, 10) === scheduleSelectedDate);
+
+  let bodyHtml;
+  if (session && session.role === 'admin') {
+    // 管理者には担当者ごとにグループ化して表示する（全員分を見分けやすくするため）
+    const byCalendar = {};
+    dayEntries.forEach(x => { (byCalendar[x.ev.calendarName] = byCalendar[x.ev.calendarName] || []).push(x); });
+    const order = scheduleStaffOptions.length ? scheduleStaffOptions : Object.keys(byCalendar);
+    bodyHtml = order.filter(name => byCalendar[name] && byCalendar[name].length).map(name => {
+      const area = scheduleCalendarAreas[name] || '';
+      const c = colorForArea(area);
+      const label = name === '仕事' ? '仕事（オーナー）' : name;
+      const items = byCalendar[name].slice().sort((a, b) => a.ev.start.localeCompare(b.ev.start));
+      return `
+        <div class="schedule-day-group-head" style="background:${c.bg};color:${c.fg}">${escapeHtml(label)}${area ? `（${escapeHtml(area)}）` : ''}</div>
+        ${items.map(x => scheduleEventCardHtml(x.ev, x.idx)).join('')}
+      `;
+    }).join('');
+    if (!bodyHtml) bodyHtml = '<p style="font-size:13px;color:var(--gray)">この日の予定はありません。</p>';
+  } else {
+    const sorted = dayEntries.slice().sort((a, b) => a.ev.start.localeCompare(b.ev.start));
+    bodyHtml = sorted.length === 0
+      ? '<p style="font-size:13px;color:var(--gray)">この日の予定はありません。</p>'
+      : sorted.map(x => scheduleEventCardHtml(x.ev, x.idx)).join('');
+  }
 
   panel.innerHTML = `
     <div class="schedule-day-panel-title">${escapeHtml(formatDateJp(scheduleSelectedDate))}の予定</div>
-    ${dayEvents.length === 0 ? '<p style="font-size:13px;color:var(--gray)">この日の予定はありません。</p>' : ''}
-    ${dayEvents.map(x => scheduleEventCardHtml(x.ev, x.idx)).join('')}
+    ${bodyHtml}
     <button type="button" class="btn-add-row" id="scheduleDayAddBtn">＋ この日に追加</button>
   `;
   document.getElementById('scheduleDayAddBtn').addEventListener('click', () => openScheduleForm(null));
