@@ -381,7 +381,6 @@
         <label>お支払い方法</label>
         <div class="radio-row">
           <label><input type="radio" name="payment" value="現金"> 現金</label>
-          <label><input type="radio" name="payment" value="振込"> 振込</label>
           <label><input type="radio" name="payment" value="カード"> カード</label>
         </div>
       </div>
@@ -747,7 +746,7 @@
 
     <div class="schedule-calendar-grid" id="scheduleCalendarGrid"></div>
     <div class="schedule-matrix-wrap" id="scheduleMatrixGrid" hidden></div>
-    <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間　🟩 繁忙期対応加算の対象期間（3・4月）</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:6px">🟧 年末年始加算の対象期間　🟩 繁忙期対応加算の対象期間</div>
 
     <div id="scheduleDayPanel" style="margin-top:18px"></div>
 
@@ -877,10 +876,15 @@ function formatYen(n) {
   return '¥' + Number(n || 0).toLocaleString();
 }
 
-// ===== 繁忙期対応加算の対象期間（3月・4月はまるごと対象） =====
+// ===== 繁忙期対応加算の対象期間（3月13日〜4月4日） =====
+function getBusySeasonWindow(year) {
+  return { start: new Date(year, 2, 13), end: new Date(year, 3, 4) };
+}
 function isBusySeasonDate(dateStr) {
-  const m = Number(dateStr.split('-')[1]);
-  return m === 3 || m === 4;
+  const [y] = dateStr.split('-').map(Number);
+  const win = getBusySeasonWindow(y);
+  const d = new Date(dateStr + 'T00:00:00');
+  return d >= win.start && d <= win.end;
 }
 
 // 訪問日が年末年始加算・繁忙期対応加算のいずれかの対象期間に入っていたら、該当する加算項目に自動でチェックを入れ、
@@ -914,8 +918,9 @@ function updateYearEndNotice() {
     box.hidden = false;
   } else if (isBusy) {
     const item = ITEMS.find(i => i.id === 'busy') || {};
+    const busyWin = getBusySeasonWindow(Number(dateStr.split('-')[0]));
     textEl.textContent =
-      `本日は繁忙期対応加算の対象期間です（3月・4月）。作業内容に「${item.label || '繁忙期対応加算'}」（+${formatYen(item.price)}・税抜）を自動で追加しました。不要な場合はチェックを外してください。`;
+      `本日は繁忙期対応加算の対象期間です（${formatYmdJp(busyWin.start)}〜${formatYmdJp(busyWin.end)}）。作業内容に「${item.label || '繁忙期対応加算'}」（+${formatYen(item.price)}・税抜）を自動で追加しました。不要な場合はチェックを外してください。`;
     box.hidden = false;
   } else {
     box.hidden = true;
@@ -2395,21 +2400,21 @@ async function loadScheduleEvents() {
 // 表示中の期間（月／週／日）のどこかが年末年始・繁忙期の加算対象にかかっていれば文章で知らせる
 function updateScheduleRangeNote(fromDate, toDate) {
   const noteEl = document.getElementById('scheduleYearEndNote');
-  let yearEndWin = null, hasBusy = false;
+  let yearEndWin = null, busyWin = null;
   const cur = new Date(fromDate);
   while (cur <= toDate) {
     const ds = localDateStr(cur);
     if (isYearEndNewYearDate(ds)) yearEndWin = getYearEndNewYearWindow(ds);
-    if (isBusySeasonDate(ds)) hasBusy = true;
+    if (isBusySeasonDate(ds)) busyWin = getBusySeasonWindow(Number(ds.split('-')[0]));
     cur.setDate(cur.getDate() + 1);
   }
   if (yearEndWin) {
     const item = ITEMS.find(i => i.id === 'yearend') || {};
     noteEl.textContent = `⚠ 年末年始加算の対象期間：${formatYmdJp(yearEndWin.start)}〜${formatYmdJp(yearEndWin.end)}（+${formatYen(item.price)}・税抜／オレンジ色の日付）`;
     noteEl.hidden = false;
-  } else if (hasBusy) {
+  } else if (busyWin) {
     const item = ITEMS.find(i => i.id === 'busy') || {};
-    noteEl.textContent = `⚠ 繁忙期対応加算の対象期間：3月・4月すべて（+${formatYen(item.price)}・税抜／緑色の日付）`;
+    noteEl.textContent = `⚠ 繁忙期対応加算の対象期間：${formatYmdJp(busyWin.start)}〜${formatYmdJp(busyWin.end)}（+${formatYen(item.price)}・税抜／緑色の日付）`;
     noteEl.hidden = false;
   } else {
     noteEl.hidden = true;
@@ -2839,8 +2844,7 @@ let ITEMS = [
   { id:'straight_drain', label:'真下排水アダプター対応',                 note:'',                 price:5000 },
   { id:'busy',           label:'繁忙期対応加算（3・4月）',               note:'',                 price:3000 },
   { id:'yearend',        label:'年末料金加算（12月）',                   note:'',                 price:5000 },
-  { id:'sameday',        label:'即日対応費',                             note:'',                 price:1000 },
-  { id:'travel',         label:'交通費',                                 note:'',                 price:3000 },
+  // 即日対応費・交通費は 2026-11-21 に廃止（サイトの「出張費0円」に合わせる）
   { id:'other',          label:'その他',                                 note:'内容を入力',       price:null },
   { id:'discount',       label:'値引き',                                 note:'',                 price:null, discount:true },
 ];
@@ -2986,6 +2990,48 @@ noEmailEl.addEventListener('change', () => {
   reviewOptInEl.disabled = disabled;
 });
 
+// ===== ミツモア経由（決済・お客様情報ともミツモア側で完結するため、同意事項・署名・お客様情報は
+// 当店側では取得しない。同意事項はもともと社内DB記載用の記録に過ぎないため、ミツモア経由では
+// お客様に同意・署名をいただく機会自体がないので省略する） =====
+function isMitsumoaOrderSource() {
+  return (document.getElementById('orderSource').value || '').indexOf('ミツモア') !== -1;
+}
+
+// 修理不可・ミツモア経由のいずれか（または両方）に応じて、同意事項・署名の要否を更新する。
+// 両方のトリガー（修理不可チェック・受注元選択）から呼べるよう共通化している。
+function refreshConsentRequirements() {
+  const cannotRepair = cannotRepairCheckEl.checked;
+  const skipConsent = cannotRepair || isMitsumoaOrderSource();
+  // 注意：hidden属性で非表示にしても、Chromeはrequired属性が付いたチェックボックスを
+  // フォーム検証から除外してくれない（非表示なのでブラウザの警告も表示されず、
+  // 送信ボタンを押しても何も起きないように見える）。そのため非表示にする際はrequiredも外す。
+  document.getElementById('consentSection').hidden = skipConsent;
+  document.getElementById('signatureBlock').hidden = skipConsent;
+  document.querySelectorAll('#consentSection input[type="checkbox"]').forEach(cb => {
+    cb.required = !skipConsent;
+    if (skipConsent) cb.checked = false;
+  });
+  if (skipConsent) clearSignature();
+
+  // ミツモア経由はお客様情報が当店にはわからないため、お名前・お電話番号を必須にしない
+  const skipCustomerInfo = isMitsumoaOrderSource();
+  document.getElementById('name').required = !skipCustomerInfo;
+  document.getElementById('phone').required = !skipCustomerInfo;
+}
+
+let lastOrderSourceWasMitsumoa = false;
+document.getElementById('orderSource').addEventListener('change', () => {
+  const isMitsumoa = isMitsumoaOrderSource();
+  // ミツモア経由に切り替わった瞬間だけ、メールアドレス不明を初期値としてチェックしておく
+  // （お客様情報が元々わからないため）。その後の手動変更は尊重し、上書きしない。
+  if (isMitsumoa && !lastOrderSourceWasMitsumoa && !noEmailEl.checked) {
+    noEmailEl.checked = true;
+    noEmailEl.dispatchEvent(new Event('change'));
+  }
+  lastOrderSourceWasMitsumoa = isMitsumoa;
+  refreshConsentRequirements();
+});
+
 // ===== 修理不可 =====
 const cannotRepairCheckEl = document.getElementById('cannotRepairCheck');
 const warrantyOptInCheckEl = document.getElementById('warrantyOptInCheck');
@@ -3005,17 +3051,7 @@ cannotRepairCheckEl.addEventListener('change', () => {
     warrantyOptInCheckEl.checked = false;
     warrantyOptInCheckEl.dispatchEvent(new Event('change'));
   }
-  // 修理不可（作業なし）の場合は、お客様に同意事項への同意や署名をいただかない。
-  // 注意：hidden属性で非表示にしても、Chromeはrequired属性が付いたチェックボックスを
-  // フォーム検証から除外してくれない（非表示なのでブラウザの警告も表示されず、
-  // 送信ボタンを押しても何も起きないように見える）。そのため非表示にする際はrequiredも外す。
-  document.getElementById('consentSection').hidden = cannotRepair;
-  document.getElementById('signatureBlock').hidden = cannotRepair;
-  document.querySelectorAll('#consentSection input[type="checkbox"]').forEach(cb => {
-    cb.required = !cannotRepair;
-    if (cannotRepair) cb.checked = false;
-  });
-  if (cannotRepair) clearSignature();
+  refreshConsentRequirements();
   document.getElementById('cannotRepairConfirmBox').hidden = true;
   document.getElementById('submitBtn').textContent = cannotRepair ? '内容を確認して登録する' : '同意して送信する';
   // 修理不可を解除したときに、年末年始・繁忙期加算の自動チェックを再適用する
@@ -3442,7 +3478,7 @@ function fillFormFromCalendarEvent(ev) {
   if (parsed.orderSourceRaw) {
     const sel = document.getElementById('orderSource');
     const opt = [...sel.options].find(o => o.value === parsed.orderSourceRaw || o.value.startsWith(parsed.orderSourceRaw));
-    if (opt) sel.value = opt.value;
+    if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event('change')); }
   }
 
   if (parsed.contactMethodRaw) {
@@ -3460,7 +3496,7 @@ document.getElementById('repairForm').addEventListener('submit', async e => {
   const errEl = document.getElementById('formError');
   errEl.textContent = '';
   const cannotRepair = cannotRepairCheckEl.checked;
-  if (!cannotRepair && !hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
+  if (!cannotRepair && !isMitsumoaOrderSource() && !hasSig) { errEl.textContent='署名が必要です。枠内にご署名ください。'; return; }
 
   const noEmail = noEmailEl.checked;
   if (!noEmail && !getEmailValue()) {
