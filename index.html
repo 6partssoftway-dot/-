@@ -383,6 +383,10 @@
           <label><input type="radio" name="payment" value="現金"> 現金</label>
           <label><input type="radio" name="payment" value="カード"> カード</label>
         </div>
+        <label class="no-email-check" style="margin-top:8px">
+          <input type="checkbox" id="partsCostFrontedByStaff">
+          部品代を自分で立て替えた（会社が用意せず、その場で自分で購入した）
+        </label>
       </div>
       <div class="grid-2" style="margin-top:12px">
         <div class="field">
@@ -2657,12 +2661,17 @@ function scheduleEventCardHtml(ev, idx) {
 // 対象カレンダーが「仕事」（オーナー自身の予定）かどうか。スタッフのカレンダーは稼働予定の
 // 登録用なので文言を「出勤／稼働不可」に固定し、オーナー自身の「仕事」カレンダーだけ
 // これまで通り自由入力にする（客先名など実際の予定タイトルを書けるようにするため）。
+// ただし非管理者でも、既存の予定が「出勤可能」以外（お客様の訪問予定など実際の案件の予定）を
+// 編集する場合は自由入力モードにし、日時（＝日程）を変更できるようにする。タイトルは
+// 元の内容をそのまま初期値にするので、通常は日時だけ変えて保存すればよい。
 function scheduleFormIsFreeText() {
   const session = getSession();
   if (!session) return true;
-  if (session.role !== 'admin') return false;
-  const calSel = document.getElementById('scheduleFormCalendar');
-  return !calSel.value || calSel.value === '仕事';
+  if (session.role === 'admin') {
+    const calSel = document.getElementById('scheduleFormCalendar');
+    return !calSel.value || calSel.value === '仕事';
+  }
+  return !!(scheduleEditingContext && scheduleEditingContext.title && scheduleEditingContext.title !== '出勤可能');
 }
 
 function updateScheduleFormTitleMode(ev) {
@@ -2680,7 +2689,7 @@ function updateScheduleFormTitleMode(ev) {
 function openScheduleForm(ev) {
   const session = getSession();
   if (!session) { showLoginScreen(); return; }
-  scheduleEditingContext = ev ? { eventId: ev.id, calendarName: ev.calendarName } : null;
+  scheduleEditingContext = ev ? { eventId: ev.id, calendarName: ev.calendarName, title: ev.title } : null;
   document.getElementById('scheduleFormError').textContent = '';
 
   const calWrap = document.getElementById('scheduleFormCalendarWrap');
@@ -3165,6 +3174,7 @@ function collectData() {
     errors: errors.join(', '), workItems, total,
     staffBonusAmount,
     payment,
+    partsCostFrontedByStaff: document.getElementById('partsCostFrontedByStaff').checked,
     paymentStatus: document.getElementById('paymentStatus').value,
     paymentMonth: document.getElementById('paymentMonth').value,
     regMonth: document.getElementById('regMonth').value,
@@ -3203,6 +3213,7 @@ async function sendToNotion(d) {
     tax:           d.tax,
     total:         d.total,
     staffBonusAmount: d.staffBonusAmount,
+    partsCostFrontedByStaff: d.partsCostFrontedByStaff,
     netAmount:     d.netAmount,
     paymentStatus: d.paymentStatus,
     visitDate:     d.visitDate,
@@ -3419,7 +3430,9 @@ function parseCalendarEventForForm(ev) {
     address,
     phone: fields['電話'] || fields['TEL'] || fields['電話番号'] || '',
     email: fields['メール'] || fields['メールアドレス'] || '',
-    maker: fields['メーカー'] || fields['機種'] || '',
+    // 「メーカー」「型式」が別々の行で書かれている場合は両方つなげる。どちらかしか書かれていない場合や、
+    // 「メーカー・機種名」「機種」で1行にまとめて書かれている場合もそれぞれ拾えるようにする。
+    maker: [fields['メーカー'], fields['型式']].filter(Boolean).join(' ') || fields['メーカー・機種名'] || fields['機種'] || '',
     washType,
     symptom: fields['症状'] || '',
     errorCodes: (fields['エラー'] || '').split(/[,、\s]+/).filter(Boolean),
