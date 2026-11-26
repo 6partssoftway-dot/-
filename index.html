@@ -3424,6 +3424,11 @@ function parseCalendarEventForForm(ev) {
   if (typeRaw.includes('ドラム')) washType = 'ドラム式';
   else if (typeRaw.includes('縦')) washType = '縦型';
 
+  // スタッフによって「メーカー（型番）：Haier（U55A）」のように括弧付きの見出しで
+  // 書く場合があり、見出しが完全一致しないと拾えないため、「メーカー」で始まる見出しを
+  // 保険として探す（「メーカー」単独や「メーカー・機種名」は既に上で拾えているので最後の手段）。
+  const makerFallbackKey = Object.keys(fields).find(k => k.startsWith('メーカー'));
+
   return {
     name: nameOverride || nameGuess,
     prefecture: pref,
@@ -3432,7 +3437,7 @@ function parseCalendarEventForForm(ev) {
     email: fields['メール'] || fields['メールアドレス'] || '',
     // 「メーカー」「型式」が別々の行で書かれている場合は両方つなげる。どちらかしか書かれていない場合や、
     // 「メーカー・機種名」「機種」で1行にまとめて書かれている場合もそれぞれ拾えるようにする。
-    maker: [fields['メーカー'], fields['型式']].filter(Boolean).join(' ') || fields['メーカー・機種名'] || fields['機種'] || '',
+    maker: [fields['メーカー'], fields['型式']].filter(Boolean).join(' ') || fields['メーカー・機種名'] || fields['機種'] || (makerFallbackKey ? fields[makerFallbackKey] : '') || '',
     washType,
     symptom: fields['症状'] || '',
     errorCodes: (fields['エラー'] || '').split(/[,、\s]+/).filter(Boolean),
